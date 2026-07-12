@@ -11,7 +11,9 @@ import java.util.StringJoiner;
  * <p>Two formats are supported, selected via {@link Format}: an aligned
  * {@code TABLE} for reading in a terminal, and compact {@code JSON} for piping
  * into other tools. The JSON is emitted by hand to keep the project free of
- * third-party dependencies.</p>
+ * third-party dependencies. Measures that are undefined for the sample
+ * (see {@link StatisticsResult}) print as {@code n/a} in tables and
+ * {@code null} in JSON.</p>
  */
 public final class ReportFormatter {
 
@@ -54,9 +56,21 @@ public final class ReportFormatter {
         appendRow(sb, "Mode", modeString(s));
         appendRow(sb, "Variance", num(s.variance()));
         appendRow(sb, "Std Dev", num(s.stdDev()));
+        appendRow(sb, "Sample Var", num(s.sampleVariance()));
+        appendRow(sb, "Sample Std", num(s.sampleStdDev()));
+        appendRow(sb, "Skewness", num(s.skewness()));
+        appendRow(sb, "Kurtosis*", num(s.excessKurtosis()));
+        appendRow(sb, "CV", num(s.coefficientOfVariation()));
+        appendRow(sb, "Std Error", num(s.standardError()));
+        appendRow(sb, "95% CI", "[" + num(s.ci95Low()) + ", " + num(s.ci95High()) + "]");
+        appendRow(sb, "P5", num(s.p5()));
         appendRow(sb, "Q1 (25%)", num(s.q1()));
         appendRow(sb, "Q3 (75%)", num(s.q3()));
+        appendRow(sb, "P95", num(s.p95()));
         appendRow(sb, "IQR", num(s.iqr()));
+        appendRow(sb, "Fences", "[" + num(s.lowerFence()) + ", " + num(s.upperFence()) + "]");
+        appendRow(sb, "Outliers", String.valueOf(s.outlierCount()));
+        sb.append("(*) excess kurtosis: 0 = normal distribution\n");
         return sb.toString();
     }
 
@@ -69,14 +83,27 @@ public final class ReportFormatter {
                 + "  \"min\": " + s.min() + ",\n"
                 + "  \"max\": " + s.max() + ",\n"
                 + "  \"range\": " + s.range() + ",\n"
-                + "  \"mean\": " + num(s.mean()) + ",\n"
-                + "  \"median\": " + num(s.median()) + ",\n"
+                + "  \"mean\": " + jsonNum(s.mean()) + ",\n"
+                + "  \"median\": " + jsonNum(s.median()) + ",\n"
                 + "  \"modes\": " + modes + ",\n"
-                + "  \"variance\": " + num(s.variance()) + ",\n"
-                + "  \"stdDev\": " + num(s.stdDev()) + ",\n"
-                + "  \"q1\": " + num(s.q1()) + ",\n"
-                + "  \"q3\": " + num(s.q3()) + ",\n"
-                + "  \"iqr\": " + num(s.iqr()) + "\n"
+                + "  \"variance\": " + jsonNum(s.variance()) + ",\n"
+                + "  \"stdDev\": " + jsonNum(s.stdDev()) + ",\n"
+                + "  \"sampleVariance\": " + jsonNum(s.sampleVariance()) + ",\n"
+                + "  \"sampleStdDev\": " + jsonNum(s.sampleStdDev()) + ",\n"
+                + "  \"skewness\": " + jsonNum(s.skewness()) + ",\n"
+                + "  \"excessKurtosis\": " + jsonNum(s.excessKurtosis()) + ",\n"
+                + "  \"coefficientOfVariation\": " + jsonNum(s.coefficientOfVariation()) + ",\n"
+                + "  \"standardError\": " + jsonNum(s.standardError()) + ",\n"
+                + "  \"ci95Low\": " + jsonNum(s.ci95Low()) + ",\n"
+                + "  \"ci95High\": " + jsonNum(s.ci95High()) + ",\n"
+                + "  \"p5\": " + jsonNum(s.p5()) + ",\n"
+                + "  \"q1\": " + jsonNum(s.q1()) + ",\n"
+                + "  \"q3\": " + jsonNum(s.q3()) + ",\n"
+                + "  \"p95\": " + jsonNum(s.p95()) + ",\n"
+                + "  \"iqr\": " + jsonNum(s.iqr()) + ",\n"
+                + "  \"lowerFence\": " + jsonNum(s.lowerFence()) + ",\n"
+                + "  \"upperFence\": " + jsonNum(s.upperFence()) + ",\n"
+                + "  \"outlierCount\": " + s.outlierCount() + "\n"
                 + "}";
     }
 
@@ -91,6 +118,17 @@ public final class ReportFormatter {
     }
 
     private static String num(double value) {
+        if (Double.isNaN(value) || Double.isInfinite(value)) {
+            return "n/a";
+        }
+        return String.format(Locale.ROOT, "%.4f", value);
+    }
+
+    /** JSON has no NaN/Infinity literals — undefined measures become {@code null}. */
+    private static String jsonNum(double value) {
+        if (Double.isNaN(value) || Double.isInfinite(value)) {
+            return "null";
+        }
         return String.format(Locale.ROOT, "%.4f", value);
     }
 }

@@ -14,7 +14,10 @@
     --gridline:       #e1e0d9;
     --baseline:       #c3c2b7;
     --border:         rgba(11, 11, 11, 0.10);
-    --series-1:       #2a78d6;
+    --series-1:       #2a78d6;   /* Dataset A */
+    --series-2:       #1baf7a;   /* Dataset B */
+    --curve-1:        #104281;   /* normal-fit curve, darker step of the blue ramp */
+    --curve-2:        #0e6b4a;   /* normal-fit curve, darker step of the aqua ramp */
     --critical:       #d03b3b;
   }
   @media (prefers-color-scheme: dark) {
@@ -28,6 +31,9 @@
       --baseline:       #383835;
       --border:         rgba(255, 255, 255, 0.10);
       --series-1:       #3987e5;
+      --series-2:       #199e70;
+      --curve-1:        #9ec5f4;
+      --curve-2:        #7ee2b1;
       --critical:       #e66767;
     }
   }
@@ -57,7 +63,7 @@
 
   textarea {
     width: 100%;
-    min-height: 110px;
+    min-height: 96px;
     resize: vertical;
     font: 13px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
     color: var(--text-primary);
@@ -67,6 +73,12 @@
     padding: 10px 12px;
   }
   textarea:focus { outline: 2px solid var(--series-1); outline-offset: -1px; }
+
+  .ds-label { display: flex; align-items: center; gap: 7px; font-size: 13px; font-weight: 600;
+              color: var(--text-secondary); margin: 0 0 6px; }
+  .ds-label .swatch { width: 10px; height: 10px; border-radius: 3px; }
+  #inputBWrap { display: none; margin-top: 14px; }
+  #inputBWrap.show { display: block; }
 
   .controls { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 12px; }
 
@@ -89,7 +101,7 @@
   }
   button.primary:hover { filter: brightness(1.08); }
   .file-btn input { display: none; }
-  label.bins { font-size: 13px; color: var(--text-secondary); display: flex; align-items: center; gap: 6px; }
+  label.opt { font-size: 13px; color: var(--text-secondary); display: flex; align-items: center; gap: 6px; }
 
   .error {
     display: none;
@@ -115,11 +127,18 @@
   }
   .tile .label { font-size: 12px; color: var(--text-secondary); }
   .tile .value { font-size: 26px; font-weight: 600; margin-top: 2px; }
+  .tile .pair  { display: flex; align-items: center; gap: 7px; font-size: 17px; font-weight: 600; margin-top: 4px; }
+  .tile .dot   { width: 9px; height: 9px; border-radius: 50%; flex: none; }
 
   /* Charts */
   .chart-box { position: relative; }
   svg { display: block; width: 100%; height: auto; }
   svg text { font-family: system-ui, -apple-system, "Segoe UI", sans-serif; }
+
+  .legend { display: flex; flex-wrap: wrap; gap: 16px; align-items: center; margin: 2px 0 10px; font-size: 12.5px; color: var(--text-secondary); }
+  .legend .item { display: flex; align-items: center; gap: 6px; }
+  .legend .bar-key  { width: 12px; height: 12px; border-radius: 3px 3px 0 0; }
+  .legend .line-key { width: 16px; height: 0; border-top: 2px solid; }
 
   .tooltip {
     position: absolute;
@@ -138,36 +157,53 @@
   .tooltip.show { opacity: 1; }
   .tooltip .t-title { color: var(--text-secondary); }
   .tooltip .t-value { font-weight: 600; }
+  .tooltip .t-row { display: flex; align-items: center; gap: 6px; }
+  .tooltip .dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+
+  /* Comparison verdict card */
+  .compare-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; }
+  .compare-grid .cg-label { font-size: 12px; color: var(--text-secondary); }
+  .compare-grid .cg-value { font-size: 20px; font-weight: 600; margin-top: 2px; }
+  .verdict { margin-top: 14px; font-size: 13.5px; color: var(--text-secondary); }
+  .verdict strong { color: var(--text-primary); }
 
   /* Table */
   table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
   th, td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--gridline); }
   th { color: var(--text-secondary); font-weight: 600; font-size: 12.5px; }
-  td.num { text-align: right; font-variant-numeric: tabular-nums; }
-  th.num { text-align: right; }
+  td.num, th.num { text-align: right; }
+  td.num { font-variant-numeric: tabular-nums; }
   tr:last-child td { border-bottom: none; }
 
   .row-actions { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
   .row-actions h2 { margin-bottom: 0; }
-  .hint { font-size: 12px; color: var(--text-muted); margin-top: 8px; }
+  .footnote { font-size: 12px; color: var(--text-muted); margin-top: 10px; }
 </style>
 </head>
 <body>
 <div class="wrap">
   <header>
     <h1>Number Insights</h1>
-    <p>Paste or upload a numeric dataset to get descriptive statistics and distribution charts.</p>
+    <p>Paste or upload numeric datasets to get descriptive statistics, distribution charts and two-sample comparison.</p>
   </header>
 
   <!-- Input -->
   <section class="card">
     <h2>Data input</h2>
-    <textarea id="input" placeholder="One number per line, or comma/semicolon/tab separated — e.g.&#10;12, 47, 33&#10;58&#10;# comment lines are ignored"></textarea>
+    <div>
+      <div class="ds-label" id="labelA"><span class="swatch" style="background: var(--series-1)"></span>Dataset A</div>
+      <textarea id="inputA" placeholder="One number per line, or comma/semicolon/tab separated — e.g.&#10;12, 47, 33&#10;58&#10;# comment lines are ignored"></textarea>
+    </div>
+    <div id="inputBWrap">
+      <div class="ds-label"><span class="swatch" style="background: var(--series-2)"></span>Dataset B</div>
+      <textarea id="inputB" placeholder="Second dataset to compare against Dataset A"></textarea>
+    </div>
     <div class="controls">
       <button class="primary" id="analyze">Analyze</button>
+      <button id="toggleB">+ Compare with a second dataset</button>
       <label class="file-btn">Upload .txt / .csv<input type="file" id="file" accept=".txt,.csv,text/plain,text/csv"></label>
       <button id="sample">Load sample data</button>
-      <label class="bins">Bins
+      <label class="opt">Bins
         <select id="bins">
           <option>8</option>
           <option selected>12</option>
@@ -175,6 +211,7 @@
           <option>24</option>
         </select>
       </label>
+      <label class="opt"><input type="checkbox" id="normalToggle" checked> Normal curve</label>
     </div>
     <div class="error" id="error" role="alert"></div>
   </section>
@@ -183,11 +220,20 @@
   <div id="results">
     <div class="tiles" id="tiles"></div>
 
+    <section class="card" id="compareCard" style="display: none">
+      <h2>Two-sample comparison — Welch's t-test</h2>
+      <div class="compare-grid" id="compareGrid"></div>
+      <div class="verdict" id="verdict"></div>
+      <div class="footnote">Welch's test does not assume equal variances. Cohen's d: ≈0.2 small · ≈0.5 medium · ≈0.8 large.</div>
+    </section>
+
     <section class="card">
       <h2 id="histTitle">Distribution — histogram</h2>
+      <div class="legend" id="histLegend"></div>
       <div class="chart-box" id="histBox">
         <div class="tooltip" id="histTip"></div>
       </div>
+      <div class="footnote" id="histNote" style="display: none">Normal curve: expected bin counts for a normal distribution with the dataset's mean and standard deviation.</div>
     </section>
 
     <section class="card">
@@ -203,6 +249,7 @@
         <button id="copyJson">Copy JSON</button>
       </div>
       <table id="statsTable"></table>
+      <div class="footnote">Kurtosis is <em>excess</em> kurtosis (0 = normal). CI uses the normal approximation. Outliers use the Tukey 1.5·IQR fence rule.</div>
     </section>
   </div>
 </div>
@@ -228,8 +275,15 @@ function el(name, attrs, text) {
 }
 
 function fmt(x, digits = 2) {
+  if (x === null || x === undefined || Number.isNaN(x)) return "n/a";
   if (Number.isInteger(x)) return x.toLocaleString("en-US");
   return x.toLocaleString("en-US", { minimumFractionDigits: digits, maximumFractionDigits: digits });
+}
+
+function fmtP(p) {
+  if (p === null || p === undefined) return "n/a";
+  if (p < 0.001) return "< 0.001";
+  return fmt(p, 4);
 }
 
 /* Clean ~4-step y ticks: 1/2/5 × 10^k */
@@ -250,25 +304,43 @@ function roundedTopRect(x, y, w, h, r) {
   return `M${x},${y + h} V${y + r} Q${x},${y} ${x + r},${y} H${x + w - r} Q${x + w},${y} ${x + w},${y + r} V${y + h} Z`;
 }
 
+function normalPdf(x, mean, sd) {
+  const z = (x - mean) / sd;
+  return Math.exp(-0.5 * z * z) / (sd * Math.sqrt(2 * Math.PI));
+}
+
 /* ---------- input handling ---------- */
 
 $("file").addEventListener("change", e => {
   const f = e.target.files[0];
   if (!f) return;
-  f.text().then(text => { $("input").value = text; });
+  // Load into B when compare mode is open and A already has data
+  const target = ($("inputBWrap").classList.contains("show") && $("inputA").value.trim())
+      ? $("inputB") : $("inputA");
+  f.text().then(text => { target.value = text; });
+  e.target.value = "";
+});
+
+$("toggleB").addEventListener("click", () => {
+  const wrap = $("inputBWrap");
+  const showing = wrap.classList.toggle("show");
+  $("toggleB").textContent = showing ? "− Remove second dataset" : "+ Compare with a second dataset";
+  if (!showing) $("inputB").value = "";
 });
 
 $("sample").addEventListener("click", () => {
-  // Roughly bell-shaped sample: sum of three uniform draws, scaled to 0–100.
-  const values = [];
-  for (let i = 0; i < 400; i++) {
-    values.push(Math.round((Math.random() + Math.random() + Math.random()) / 3 * 100));
+  // Roughly bell-shaped samples: sum of three uniform draws scaled to 0–100.
+  const draw = shift => Math.round(Math.min(100, Math.max(0,
+      (Math.random() + Math.random() + Math.random()) / 3 * 100 + shift)));
+  $("inputA").value = Array.from({ length: 400 }, () => draw(0)).join("\n");
+  if ($("inputBWrap").classList.contains("show")) {
+    $("inputB").value = Array.from({ length: 400 }, () => draw(12)).join("\n");
   }
-  $("input").value = values.join("\n");
 });
 
 $("analyze").addEventListener("click", analyze);
 $("bins").addEventListener("change", () => { if (lastResponse) analyze(); });
+$("normalToggle").addEventListener("change", () => { if (lastResponse) renderCurrent(); });
 
 $("copyJson").addEventListener("click", () => {
   if (!lastResponse) return;
@@ -279,16 +351,20 @@ $("copyJson").addEventListener("click", () => {
 });
 
 async function analyze() {
-  const body = $("input").value;
-  const errBox = $("error");
-  errBox.classList.remove("show");
+  const bodyA = $("inputA").value;
+  const bodyB = $("inputBWrap").classList.contains("show") ? $("inputB").value : "";
+  $("error").classList.remove("show");
 
-  if (!body.trim()) {
+  if (!bodyA.trim()) {
     return showError("Enter some data first — paste numbers or upload a file.");
   }
+  const comparing = bodyB.trim().length > 0;
+  const bins = encodeURIComponent($("bins").value);
 
   try {
-    const res = await fetch("/api/analyze?bins=" + encodeURIComponent($("bins").value), {
+    const url = comparing ? `/api/compare?bins=${bins}` : `/api/analyze?bins=${bins}`;
+    const body = comparing ? bodyA + "\n---\n" + bodyB : bodyA;
+    const res = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "text/plain; charset=utf-8" },
       body
@@ -296,7 +372,7 @@ async function analyze() {
     const data = await res.json();
     if (!res.ok) return showError(data.error || ("Request failed with status " + res.status));
     lastResponse = data;
-    render(data);
+    renderCurrent();
   } catch (e) {
     showError("Could not reach the analysis server: " + e.message);
   }
@@ -311,39 +387,96 @@ function showError(message) {
 
 /* ---------- rendering ---------- */
 
-function render(data) {
-  renderTiles(data.stats);
-  renderHistogram(data.histogram, data.stats.count);
-  renderBoxPlot(data.stats);
-  renderTable(data.stats);
+function renderCurrent() {
+  const data = lastResponse;
+  const comparing = !!data.a;
+  const sets = comparing
+      ? [{ name: "Dataset A", stats: data.a.stats, hist: data.a.histogram,
+           color: css("--series-1"), curve: css("--curve-1") },
+         { name: "Dataset B", stats: data.b.stats, hist: data.b.histogram,
+           color: css("--series-2"), curve: css("--curve-2") }]
+      : [{ name: "Dataset", stats: data.stats, hist: data.histogram,
+           color: css("--series-1"), curve: css("--curve-1") }];
+
+  renderTiles(sets);
+  renderComparison(comparing ? data.comparison : null);
+  renderHistogram(sets);
+  renderBoxPlots(sets);
+  renderTable(sets);
   $("results").classList.add("show");
 }
 
-function renderTiles(s) {
-  const tiles = [
-    ["Count", fmt(s.count)],
-    ["Mean", fmt(s.mean)],
-    ["Median", fmt(s.median)],
-    ["Std dev", fmt(s.stdDev)]
+function renderTiles(sets) {
+  const measures = [
+    ["Count", s => fmt(s.count)],
+    ["Mean", s => fmt(s.mean)],
+    ["Median", s => fmt(s.median)],
+    ["Std dev (sample)", s => fmt(s.sampleStdDev)]
   ];
-  $("tiles").innerHTML = tiles.map(([label, value]) =>
-    `<div class="tile"><div class="label">${label}</div><div class="value">${value}</div></div>`
-  ).join("");
+  $("tiles").innerHTML = measures.map(([label, get]) => {
+    if (sets.length === 1) {
+      return `<div class="tile"><div class="label">${label}</div><div class="value">${get(sets[0].stats)}</div></div>`;
+    }
+    const rows = sets.map(set =>
+      `<div class="pair"><span class="dot" style="background:${set.color}"></span>${get(set.stats)}</div>`
+    ).join("");
+    return `<div class="tile"><div class="label">${label}</div>${rows}</div>`;
+  }).join("");
 }
 
-function renderHistogram(bins, total) {
+function renderComparison(cmp) {
+  const card = $("compareCard");
+  if (!cmp) { card.style.display = "none"; return; }
+  card.style.display = "";
+
+  const dLabel = d => {
+    const a = Math.abs(d);
+    return a >= 0.8 ? "large" : a >= 0.5 ? "medium" : a >= 0.2 ? "small" : "negligible";
+  };
+  const cells = [
+    ["Mean difference (A − B)", fmt(cmp.meanDifference, 3)],
+    ["Cohen's d", cmp.cohensD === null ? "n/a" : `${fmt(cmp.cohensD, 3)} (${dLabel(cmp.cohensD)})`],
+    ["Welch's t", fmt(cmp.tStatistic, 3)],
+    ["df", fmt(cmp.degreesOfFreedom, 1)],
+    ["p-value (two-sided)", fmtP(cmp.pValue)]
+  ];
+  $("compareGrid").innerHTML = cells.map(([label, value]) =>
+    `<div><div class="cg-label">${label}</div><div class="cg-value">${value}</div></div>`
+  ).join("");
+
+  const significant = cmp.pValue !== null && cmp.pValue < 0.05;
+  $("verdict").innerHTML = significant
+      ? `At α = 0.05 the difference in means is <strong>statistically significant</strong> (p ${fmtP(cmp.pValue)}).`
+      : `At α = 0.05 the difference in means is <strong>not statistically significant</strong> (p = ${fmtP(cmp.pValue)}).`;
+}
+
+function renderHistogram(sets) {
   const W = 860, H = 300;
   const pad = { top: 16, right: 12, bottom: 34, left: 46 };
   const plotW = W - pad.left - pad.right;
   const plotH = H - pad.top - pad.bottom;
+  const showCurve = $("normalToggle").checked;
+  const surface = css("--surface-1");
 
   const box = $("histBox");
   box.querySelector("svg")?.remove();
   const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, role: "img",
     "aria-label": "Histogram of the dataset distribution" });
 
-  const maxCount = Math.max(...bins.map(b => b.count));
-  const ticks = niceTicks(maxCount);
+  const bins = sets[0].hist;            // compare mode: bins are server-aligned
+  const nBins = bins.length;
+  const binWidth = bins[0].high - bins[0].low || 1;
+
+  // y scale covers the tallest bar of every set AND the tallest normal-fit peak
+  let yPeak = Math.max(...sets.flatMap(s => s.hist.map(b => b.count)));
+  if (showCurve) {
+    for (const s of sets) {
+      if (s.stats.sampleStdDev > 0) {
+        yPeak = Math.max(yPeak, s.stats.count * binWidth * normalPdf(s.stats.mean, s.stats.mean, s.stats.sampleStdDev));
+      }
+    }
+  }
+  const ticks = niceTicks(yPeak);
   const yMax = ticks[ticks.length - 1];
   const y = v => pad.top + plotH - (v / yMax) * plotH;
 
@@ -355,27 +488,163 @@ function renderHistogram(bins, total) {
       "font-size": 11, fill: css("--text-muted"), style: "font-variant-numeric: tabular-nums" }, fmt(t)));
   }
 
-  // Columns: ≤24px thick, 2px surface gap between neighbours, rounded data-end
-  const slot = plotW / bins.length;
-  const barW = Math.min(24, slot - 2);
+  // Bars: one group per bin; ≤24px thick, 2px surface gap between neighbours
+  const slot = plotW / nBins;
+  const groupGap = 2;
+  const barW = Math.min(24, (slot - groupGap * (sets.length + 1)) / sets.length);
+  const groupW = barW * sets.length + groupGap * (sets.length - 1);
   const tip = $("histTip");
+  const barPaths = [];
 
-  bins.forEach((b, i) => {
-    const barH = (b.count / yMax) * plotH;
-    const x = pad.left + i * slot + (slot - barW) / 2;
-    const path = el("path", {
-      d: roundedTopRect(x, y(b.count), barW, Math.max(barH, 0.5), 4),
-      fill: css("--series-1")
+  for (let i = 0; i < nBins; i++) {
+    const x0 = pad.left + i * slot + (slot - groupW) / 2;
+    const paths = sets.map((set, k) => {
+      const count = set.hist[i].count;
+      const barH = (count / yMax) * plotH;
+      const path = el("path", {
+        d: roundedTopRect(x0 + k * (barW + groupGap), y(count), barW, Math.max(barH, 0.5), 4),
+        fill: set.color
+      });
+      svg.append(path);
+      return path;
     });
+    barPaths.push(paths);
+  }
 
-    // Hover target covers the full slot height, easier to hit than the bar
+  // Normal-fit curves: 2px line over a 4px surface halo so they read over bars
+  if (showCurve) {
+    const domainLow = bins[0].low;
+    const domainHigh = bins[nBins - 1].high;
+    const xOf = v => pad.left + ((v - domainLow) / (domainHigh - domainLow || 1)) * plotW;
+    for (const set of sets) {
+      const sd = set.stats.sampleStdDev;
+      if (!(sd > 0)) continue;
+      const pts = [];
+      for (let i = 0; i <= 120; i++) {
+        const v = domainLow + (i / 120) * (domainHigh - domainLow);
+        const expected = set.stats.count * binWidth * normalPdf(v, set.stats.mean, sd);
+        pts.push(`${xOf(v).toFixed(1)},${Math.max(y(expected), pad.top).toFixed(1)}`);
+      }
+      svg.append(el("polyline", { points: pts.join(" "), fill: "none",
+        stroke: surface, "stroke-width": 4, "stroke-linejoin": "round" }));
+      svg.append(el("polyline", { points: pts.join(" "), fill: "none",
+        stroke: set.curve, "stroke-width": 2, "stroke-linejoin": "round" }));
+    }
+  }
+
+  // Hover targets: full slot height, tooltip lists every visible series
+  for (let i = 0; i < nBins; i++) {
     const hit = el("rect", { x: pad.left + i * slot, y: pad.top, width: slot, height: plotH,
       fill: "transparent" });
     hit.addEventListener("mouseenter", () => {
-      path.setAttribute("opacity", "0.75");
-      const pct = total ? (b.count / total * 100).toFixed(1) : "0";
-      tip.innerHTML = `<div class="t-title">${fmt(b.low, 1)} – ${fmt(b.high, 1)}</div>` +
-                      `<div class="t-value">${fmt(b.count)} values · ${pct}%</div>`;
+      barPaths[i].forEach(p => p.setAttribute("opacity", "0.75"));
+      const rows = sets.map(set => {
+        const c = set.hist[i].count;
+        const pct = set.stats.count ? (c / set.stats.count * 100).toFixed(1) : "0";
+        return `<div class="t-row"><span class="dot" style="background:${set.color}"></span>` +
+               `<span class="t-value">${fmt(c)}</span>&nbsp;· ${pct}%</div>`;
+      }).join("");
+      tip.innerHTML = `<div class="t-title">${fmt(bins[i].low, 1)} – ${fmt(bins[i].high, 1)}</div>` + rows;
+      tip.classList.add("show");
+    });
+    hit.addEventListener("mousemove", e => {
+      const r = box.getBoundingClientRect();
+      tip.style.left = Math.min(e.clientX - r.left + 14, r.width - tip.offsetWidth - 4) + "px";
+      tip.style.top = (e.clientY - r.top - 44) + "px";
+    });
+    hit.addEventListener("mouseleave", () => {
+      barPaths[i].forEach(p => p.removeAttribute("opacity"));
+      tip.classList.remove("show");
+    });
+    svg.append(hit);
+  }
+
+  // X labels on bin edges, thinned so they never collide
+  const every = Math.ceil(nBins / 6);
+  for (let i = 0; i < nBins; i += every) {
+    svg.append(el("text", { x: pad.left + i * slot, y: H - 12, "text-anchor": "middle",
+      "font-size": 11, fill: css("--text-muted") }, fmt(bins[i].low, 0)));
+  }
+  svg.append(el("text", { x: pad.left + plotW, y: H - 12, "text-anchor": "end",
+    "font-size": 11, fill: css("--text-muted") }, fmt(bins[nBins - 1].high, 0)));
+
+  // Baseline (axis) above the bars' feet
+  svg.append(el("line", { x1: pad.left, x2: W - pad.right, y1: y(0), y2: y(0),
+    stroke: css("--baseline"), "stroke-width": 1 }));
+
+  box.append(svg);
+  $("histTitle").textContent = `Distribution — histogram (${nBins} bins)`;
+  $("histNote").style.display = showCurve ? "" : "none";
+
+  // Legend: present whenever more than one visual series is on the plot
+  const items = [];
+  if (sets.length > 1) {
+    for (const set of sets) {
+      items.push(`<span class="item"><span class="bar-key" style="background:${set.color}"></span>${set.name}</span>`);
+    }
+    if (showCurve) items.push(`<span class="item"><span class="line-key" style="border-color:${css("--text-muted")}"></span>Normal fit (per dataset)</span>`);
+  } else if (showCurve) {
+    items.push(`<span class="item"><span class="bar-key" style="background:${sets[0].color}"></span>Observed</span>`);
+    items.push(`<span class="item"><span class="line-key" style="border-color:${sets[0].curve}"></span>Normal fit</span>`);
+  }
+  $("histLegend").innerHTML = items.join("");
+}
+
+function renderBoxPlots(sets) {
+  const rowH = 96;
+  const W = 860, H = 40 + rowH * sets.length;
+  const pad = { left: 60, right: 46 };
+  const plotW = W - pad.left - pad.right;
+
+  const box = $("boxBox");
+  box.querySelector("svg")?.remove();
+  const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, role: "img",
+    "aria-label": "Box plots of the five-number summaries" });
+
+  // Shared x scale across every dataset so positions are comparable
+  const lo = Math.min(...sets.map(s => s.stats.min));
+  const hi = Math.max(...sets.map(s => s.stats.max));
+  const span = hi - lo || 1;
+  const x = v => pad.left + ((v - lo) / span) * plotW;
+  const muted = css("--text-muted");
+  const tip = $("boxTip");
+
+  sets.forEach((set, k) => {
+    const s = set.stats;
+    const midY = 46 + k * rowH;
+    const boxH = 34;
+    const color = set.color;
+
+    if (sets.length > 1) {
+      svg.append(el("circle", { cx: 22, cy: midY, r: 4.5, fill: color }));
+      svg.append(el("text", { x: 32, y: midY + 4, "font-size": 12, "font-weight": 600,
+        fill: css("--text-secondary") }, set.name.replace("Dataset ", "")));
+    }
+
+    for (const [a, b] of [[s.min, s.q1], [s.q3, s.max]]) {
+      svg.append(el("line", { x1: x(a), x2: x(b), y1: midY, y2: midY, stroke: color, "stroke-width": 2 }));
+    }
+    for (const v of [s.min, s.max]) {
+      svg.append(el("line", { x1: x(v), x2: x(v), y1: midY - 9, y2: midY + 9, stroke: color, "stroke-width": 2 }));
+    }
+    svg.append(el("rect", { x: x(s.q1), y: midY - boxH / 2, width: Math.max(x(s.q3) - x(s.q1), 1),
+      height: boxH, rx: 4, fill: color, "fill-opacity": 0.1, stroke: color, "stroke-width": 2 }));
+    svg.append(el("line", { x1: x(s.median), x2: x(s.median), y1: midY - boxH / 2, y2: midY + boxH / 2,
+      stroke: color, "stroke-width": 2 }));
+
+    // Selective direct labels: the five summary numbers, muted ink
+    const labels = [
+      [s.min, "Min", midY + 30], [s.q1, "Q1", midY + 30], [s.median, "Med", midY - 27],
+      [s.q3, "Q3", midY + 30], [s.max, "Max", midY + 30]
+    ];
+    for (const [v, name, ly] of labels) {
+      svg.append(el("text", { x: x(v), y: ly, "text-anchor": "middle", "font-size": 11,
+        fill: muted }, `${name} ${fmt(v)}`));
+    }
+
+    const hit = el("rect", { x: pad.left, y: midY - boxH, width: plotW, height: boxH * 2, fill: "transparent" });
+    hit.addEventListener("mouseenter", () => {
+      tip.innerHTML = `<div class="t-title">${set.name} — IQR (Q3 − Q1)</div><div class="t-value">${fmt(s.iqr)}</div>`;
       tip.classList.add("show");
     });
     hit.addEventListener("mousemove", e => {
@@ -383,104 +652,59 @@ function renderHistogram(bins, total) {
       tip.style.left = Math.min(e.clientX - r.left + 14, r.width - tip.offsetWidth - 4) + "px";
       tip.style.top = (e.clientY - r.top - 40) + "px";
     });
-    hit.addEventListener("mouseleave", () => {
-      path.removeAttribute("opacity");
-      tip.classList.remove("show");
-    });
-
-    svg.append(path, hit);
-
-    // X labels on bin edges, thinned to ~6 so they never collide
-    const every = Math.ceil(bins.length / 6);
-    if (i % every === 0) {
-      svg.append(el("text", { x: pad.left + i * slot, y: H - 12, "text-anchor": "middle",
-        "font-size": 11, fill: css("--text-muted") }, fmt(b.low, 0)));
-    }
+    hit.addEventListener("mouseleave", () => tip.classList.remove("show"));
+    svg.append(hit);
   });
-  svg.append(el("text", { x: pad.left + plotW, y: H - 12, "text-anchor": "end",
-    "font-size": 11, fill: css("--text-muted") }, fmt(bins[bins.length - 1].high, 0)));
-
-  // Baseline (axis) above the bars' feet
-  svg.append(el("line", { x1: pad.left, x2: W - pad.right, y1: y(0), y2: y(0),
-    stroke: css("--baseline"), "stroke-width": 1 }));
-
-  box.append(svg);
-  $("histTitle").textContent = `Distribution — histogram (${bins.length} bins)`;
-}
-
-function renderBoxPlot(s) {
-  const W = 860, H = 150;
-  const pad = { left: 46, right: 46 };
-  const plotW = W - pad.left - pad.right;
-  const midY = 62, boxH = 34;
-
-  const box = $("boxBox");
-  box.querySelector("svg")?.remove();
-  const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, role: "img",
-    "aria-label": "Box plot of the five-number summary" });
-
-  const span = s.max - s.min || 1;
-  const x = v => pad.left + ((v - s.min) / span) * plotW;
-  const series = css("--series-1");
-  const muted = css("--text-muted");
-
-  // Whiskers: 2px lines with end caps
-  for (const [a, b] of [[s.min, s.q1], [s.q3, s.max]]) {
-    svg.append(el("line", { x1: x(a), x2: x(b), y1: midY, y2: midY,
-      stroke: series, "stroke-width": 2 }));
-  }
-  for (const v of [s.min, s.max]) {
-    svg.append(el("line", { x1: x(v), x2: x(v), y1: midY - 9, y2: midY + 9,
-      stroke: series, "stroke-width": 2 }));
-  }
-
-  // IQR box: series hue as a ~10% wash with a 2px outline
-  svg.append(el("rect", { x: x(s.q1), y: midY - boxH / 2, width: Math.max(x(s.q3) - x(s.q1), 1),
-    height: boxH, rx: 4, fill: series, "fill-opacity": 0.1, stroke: series, "stroke-width": 2 }));
-
-  // Median line
-  svg.append(el("line", { x1: x(s.median), x2: x(s.median), y1: midY - boxH / 2, y2: midY + boxH / 2,
-    stroke: series, "stroke-width": 2 }));
-
-  // Selective direct labels in muted ink: the five summary numbers
-  const labels = [
-    [s.min, "Min", midY + 30], [s.q1, "Q1", midY + 30], [s.median, "Median", midY - 28],
-    [s.q3, "Q3", midY + 30], [s.max, "Max", midY + 30]
-  ];
-  for (const [v, name, ly] of labels) {
-    svg.append(el("text", { x: x(v), y: ly, "text-anchor": "middle", "font-size": 11,
-      fill: muted }, `${name} ${fmt(v)}`));
-  }
-
-  // Hover: whole plot shows IQR summary
-  const tip = $("boxTip");
-  const hit = el("rect", { x: pad.left, y: midY - boxH, width: plotW, height: boxH * 2, fill: "transparent" });
-  hit.addEventListener("mouseenter", () => {
-    tip.innerHTML = `<div class="t-title">IQR (Q3 − Q1)</div><div class="t-value">${fmt(s.iqr)}</div>`;
-    tip.classList.add("show");
-  });
-  hit.addEventListener("mousemove", e => {
-    const r = box.getBoundingClientRect();
-    tip.style.left = Math.min(e.clientX - r.left + 14, r.width - tip.offsetWidth - 4) + "px";
-    tip.style.top = (e.clientY - r.top - 40) + "px";
-  });
-  hit.addEventListener("mouseleave", () => tip.classList.remove("show"));
-  svg.append(hit);
 
   box.append(svg);
 }
 
-function renderTable(s) {
+function renderTable(sets) {
   const rows = [
-    ["Count", fmt(s.count)], ["Sum", fmt(s.sum)], ["Min", fmt(s.min)], ["Max", fmt(s.max)],
-    ["Range", fmt(s.range)], ["Mean", fmt(s.mean, 4)], ["Median", fmt(s.median, 4)],
-    ["Mode(s)", s.modes.map(m => fmt(m)).join(", ")], ["Variance", fmt(s.variance, 4)],
-    ["Std dev", fmt(s.stdDev, 4)], ["Q1 (25%)", fmt(s.q1, 4)], ["Q3 (75%)", fmt(s.q3, 4)],
-    ["IQR", fmt(s.iqr, 4)]
+    ["Count", s => fmt(s.count), "count"],
+    ["Sum", s => fmt(s.sum), "sum"],
+    ["Min", s => fmt(s.min), "min"],
+    ["Max", s => fmt(s.max), "max"],
+    ["Range", s => fmt(s.range), "range"],
+    ["Mean", s => fmt(s.mean, 4), "mean"],
+    ["Median", s => fmt(s.median, 4), "median"],
+    ["Mode(s)", s => s.modes.map(m => fmt(m)).join(", "), null],
+    ["Variance (population)", s => fmt(s.variance, 4), "variance"],
+    ["Std dev (population)", s => fmt(s.stdDev, 4), "stdDev"],
+    ["Variance (sample)", s => fmt(s.sampleVariance, 4), "sampleVariance"],
+    ["Std dev (sample)", s => fmt(s.sampleStdDev, 4), "sampleStdDev"],
+    ["Skewness", s => fmt(s.skewness, 4), "skewness"],
+    ["Excess kurtosis", s => fmt(s.excessKurtosis, 4), "excessKurtosis"],
+    ["Coefficient of variation", s => fmt(s.coefficientOfVariation, 4), "coefficientOfVariation"],
+    ["Standard error", s => fmt(s.standardError, 4), "standardError"],
+    ["95% CI of the mean", s => `[${fmt(s.ci95Low, 3)}, ${fmt(s.ci95High, 3)}]`, null],
+    ["P5", s => fmt(s.p5, 4), "p5"],
+    ["Q1 (25%)", s => fmt(s.q1, 4), "q1"],
+    ["Q3 (75%)", s => fmt(s.q3, 4), "q3"],
+    ["P95", s => fmt(s.p95, 4), "p95"],
+    ["IQR", s => fmt(s.iqr, 4), "iqr"],
+    ["Tukey fences", s => `[${fmt(s.lowerFence, 2)}, ${fmt(s.upperFence, 2)}]`, null],
+    ["Outliers", s => fmt(s.outlierCount), "outlierCount"]
   ];
-  $("statsTable").innerHTML =
-    "<tr><th>Measure</th><th class=\"num\">Value</th></tr>" +
-    rows.map(([k, v]) => `<tr><td>${k}</td><td class="num">${v}</td></tr>`).join("");
+
+  let html;
+  if (sets.length === 1) {
+    html = "<tr><th>Measure</th><th class=\"num\">Value</th></tr>" +
+        rows.map(([label, get]) =>
+            `<tr><td>${label}</td><td class="num">${get(sets[0].stats)}</td></tr>`).join("");
+  } else {
+    html = "<tr><th>Measure</th><th class=\"num\">A</th><th class=\"num\">B</th><th class=\"num\">Δ (A − B)</th></tr>" +
+        rows.map(([label, get, key]) => {
+          let delta = "—";
+          if (key) {
+            const a = sets[0].stats[key], b = sets[1].stats[key];
+            if (typeof a === "number" && typeof b === "number") delta = fmt(a - b, 4);
+          }
+          return `<tr><td>${label}</td><td class="num">${get(sets[0].stats)}</td>` +
+                 `<td class="num">${get(sets[1].stats)}</td><td class="num">${delta}</td></tr>`;
+        }).join("");
+  }
+  $("statsTable").innerHTML = html;
 }
 </script>
 </body>

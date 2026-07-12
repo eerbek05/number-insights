@@ -47,7 +47,7 @@ public final class Histogram {
     }
 
     /**
-     * Splits the dataset's value range into {@code binCount} equal-width buckets.
+     * Splits the dataset's own value range into {@code binCount} equal-width buckets.
      *
      * @param dataset  the data to bin; must not be empty
      * @param binCount the number of buckets (must be positive)
@@ -58,27 +58,49 @@ public final class Histogram {
         if (dataset.isEmpty()) {
             throw new IllegalArgumentException("Cannot bin an empty dataset");
         }
+        int min = dataset.stream().mapToInt(Integer::intValue).min().orElseThrow();
+        int max = dataset.stream().mapToInt(Integer::intValue).max().orElseThrow();
+        return computeBins(dataset, binCount, min, max);
+    }
+
+    /**
+     * Splits an explicit {@code [low, high]} range into {@code binCount} equal-width
+     * buckets and counts the dataset's values into them. Using the same range for
+     * two datasets produces <em>aligned</em> bins, which is what makes side-by-side
+     * distribution comparison meaningful.
+     *
+     * @param dataset  the data to bin; must not be empty
+     * @param binCount the number of buckets (must be positive)
+     * @param low      lower edge of the binning range
+     * @param high     upper edge of the binning range (must be {@code >= low})
+     * @return the buckets in ascending order
+     * @throws IllegalArgumentException on an empty dataset, {@code binCount < 1}
+     *                                  or an inverted range
+     */
+    public static List<Bin> computeBins(Dataset dataset, int binCount, double low, double high) {
+        if (dataset.isEmpty()) {
+            throw new IllegalArgumentException("Cannot bin an empty dataset");
+        }
         if (binCount <= 0) {
             throw new IllegalArgumentException("binCount must be positive");
         }
-
-        int min = dataset.stream().mapToInt(Integer::intValue).min().orElseThrow();
-        int max = dataset.stream().mapToInt(Integer::intValue).max().orElseThrow();
+        if (high < low) {
+            throw new IllegalArgumentException("Invalid bin range: high < low");
+        }
 
         int[] counts = new int[binCount];
-        double width = (max - min) / (double) binCount;
+        double width = (high - low) / binCount;
         for (int value : dataset.stream().mapToInt(Integer::intValue).toArray()) {
-            int index = (width == 0) ? 0 : (int) ((value - min) / width);
-            if (index >= binCount) {
-                index = binCount - 1; // the maximum value falls into the last bin
-            }
+            int index = (width == 0) ? 0 : (int) ((value - low) / width);
+            // Clamp so the range's extremes (and rounding) land in the edge bins.
+            index = Math.max(0, Math.min(index, binCount - 1));
             counts[index]++;
         }
 
         List<Bin> result = new ArrayList<>(binCount);
         for (int i = 0; i < binCount; i++) {
-            double lowEdge = min + i * width;
-            double highEdge = (i == binCount - 1) ? max : min + (i + 1) * width;
+            double lowEdge = low + i * width;
+            double highEdge = (i == binCount - 1) ? high : low + (i + 1) * width;
             result.add(new Bin(lowEdge, highEdge, counts[i]));
         }
         return result;

@@ -4,6 +4,8 @@ import com.eerbek.numberinsights.io.DataLoader;
 import com.eerbek.numberinsights.model.Dataset;
 import com.eerbek.numberinsights.report.ReportFormatter;
 import com.eerbek.numberinsights.stats.DescriptiveStatistics;
+import com.eerbek.numberinsights.stats.Inference;
+import com.eerbek.numberinsights.stats.StatisticsResult;
 import com.eerbek.numberinsights.viz.Histogram;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
@@ -30,7 +32,10 @@ import java.util.Locale;
  *       classpath ({@code /web/index.html});</li>
  *   <li>{@code POST /api/analyze[?bins=N]} — accepts raw numeric text
  *       (the same formats {@link DataLoader} understands) and responds with
- *       descriptive statistics plus histogram bins as JSON.</li>
+ *       descriptive statistics plus histogram bins as JSON;</li>
+ *   <li>{@code POST /api/compare[?bins=N]} — accepts two datasets separated by
+ *       a {@code ---} line and responds with both analyses (histogram bins
+ *       aligned over the combined range) plus Welch's t-test and Cohen's d.</li>
  * </ul>
  */
 public final class WebServer {
@@ -38,6 +43,10 @@ public final class WebServer {
     private static final int MIN_BINS = 2;
     private static final int MAX_BINS = 60;
     private static final int DEFAULT_BINS = 12;
+
+    /** Line of three or more dashes separating the two datasets in a compare body. */
+    private static final java.util.regex.Pattern DATASET_SEPARATOR =
+            java.util.regex.Pattern.compile("(?m)^\\s*-{3,}\\s*$");
 
     private final HttpServer server;
 
@@ -51,6 +60,7 @@ public final class WebServer {
         server = HttpServer.create(new InetSocketAddress(port), 0);
         server.createContext("/", this::handleIndex);
         server.createContext("/api/analyze", this::handleAnalyze);
+        server.createContext("/api/compare", this::handleCompare);
     }
 
     /** Starts serving requests on a background thread. */
@@ -106,13 +116,85 @@ public final class WebServer {
         }
     }
 
+    private void handleCompare(HttpExchange exchange) throws IOException {
+        if (!"POST".equalsIgnoreCase(exchange.getRequestMethod())) {
+            respond(exchange, 405, "application/json",
+                    errorJson("Use POST with two datasets separated by a --- line"));
+            return;
+        }
+
+        String body;
+        try (InputStream in = exchange.getRequestBody()) {
+            body = new String(in.readAllBytes(), StandardCharsets.UTF_8);
+        }
+
+        try {
+            String[] parts = DATASET_SEPARATOR.split(body, 2);
+            if (parts.length < 2) {
+                respond(exchange, 400, "application/json",
+                        errorJson("Provide two datasets separated by a line of dashes (---)"));
+                return;
+            }
+            Dataset a = DataLoader.fromLines(parts[0].lines().toList());
+            Dataset b = DataLoader.fromLines(parts[1].lines().toList());
+            if (a.isEmpty() || b.isEmpty()) {
+                respond(exchange, 400, "application/json",
+                        errorJson("Both datasets must contain numeric data"));
+                return;
+            }
+            int bins = clampBins(binsParam(exchange), a.size() > b.size() ? a : b);
+            respond(exchange, 200, "application/json", comparisonJson(a, b, bins));
+        } catch (IllegalArgumentException e) {
+            respond(exchange, 400, "application/json", errorJson(e.getMessage()));
+        }
+    }
+
     /** Builds the full analysis payload: statistics + histogram bins. */
     static String analysisJson(Dataset dataset, int bins) {
         String stats = new ReportFormatter(ReportFormatter.Format.JSON)
                 .format(new DescriptiveStatistics(dataset).summary());
+        return "{\n\"stats\": " + stats + ",\n\"histogram\": "
+                + binsJson(Histogram.computeBins(dataset, bins)) + "\n}";
+    }
 
+    /**
+     * Builds the comparison payload: both datasets' statistics, histogram bins
+     * aligned over the combined value range, and Welch's t-test.
+     */
+    static String comparisonJson(Dataset a, Dataset b, int bins) {
+        ReportFormatter json = new ReportFormatter(ReportFormatter.Format.JSON);
+        StatisticsResult statsA = new DescriptiveStatistics(a).summary();
+        StatisticsResult statsB = new DescriptiveStatistics(b).summary();
+
+        // A shared range gives both histograms identical bin edges.
+        double low = Math.min(statsA.min(), statsB.min());
+        double high = Math.max(statsA.max(), statsB.max());
+
+        String comparison = "null";
+        if (statsA.count() >= 2 && statsB.count() >= 2) {
+            try {
+                Inference.TTestResult t = Inference.welchTTest(statsA, statsB);
+                comparison = String.format(Locale.ROOT,
+                        "{\"meanDifference\": %s, \"cohensD\": %s, \"tStatistic\": %s, "
+                                + "\"degreesOfFreedom\": %s, \"pValue\": %s}",
+                        jsonNum(t.meanDifference()), jsonNum(t.cohensD()),
+                        jsonNum(t.tStatistic()), jsonNum(t.degreesOfFreedom()),
+                        jsonNum(t.pValue()));
+            } catch (IllegalArgumentException e) {
+                // Both variances zero → no test; the UI shows stats without it.
+            }
+        }
+
+        return "{\n"
+                + "\"a\": {\"stats\": " + json.format(statsA) + ",\n\"histogram\": "
+                + binsJson(Histogram.computeBins(a, bins, low, high)) + "},\n"
+                + "\"b\": {\"stats\": " + json.format(statsB) + ",\n\"histogram\": "
+                + binsJson(Histogram.computeBins(b, bins, low, high)) + "},\n"
+                + "\"comparison\": " + comparison + "\n}";
+    }
+
+    private static String binsJson(List<Histogram.Bin> computed) {
         StringBuilder histogram = new StringBuilder("[");
-        List<Histogram.Bin> computed = Histogram.computeBins(dataset, bins);
         for (int i = 0; i < computed.size(); i++) {
             Histogram.Bin bin = computed.get(i);
             if (i > 0) {
@@ -122,9 +204,14 @@ public final class WebServer {
                     "{\"low\": %.4f, \"high\": %.4f, \"count\": %d}",
                     bin.low(), bin.high(), bin.count()));
         }
-        histogram.append("]");
+        return histogram.append("]").toString();
+    }
 
-        return "{\n\"stats\": " + stats + ",\n\"histogram\": " + histogram + "\n}";
+    private static String jsonNum(double value) {
+        if (Double.isNaN(value) || Double.isInfinite(value)) {
+            return "null";
+        }
+        return String.format(Locale.ROOT, "%.6f", value);
     }
 
     private static int binsParam(HttpExchange exchange) {

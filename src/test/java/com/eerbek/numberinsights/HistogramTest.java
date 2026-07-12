@@ -60,6 +60,29 @@ class HistogramTest {
     }
 
     @Test
+    void explicitRangeAlignsBinsAcrossDatasets() {
+        Dataset a = Dataset.of(List.of(0, 1, 2));
+        Dataset b = Dataset.of(List.of(8, 9, 10));
+        List<Histogram.Bin> binsA = Histogram.computeBins(a, 5, 0, 10);
+        List<Histogram.Bin> binsB = Histogram.computeBins(b, 5, 0, 10);
+        // Same edges on both — that's what makes the comparison meaningful
+        for (int i = 0; i < 5; i++) {
+            assertEquals(binsA.get(i).low(), binsB.get(i).low());
+            assertEquals(binsA.get(i).high(), binsB.get(i).high());
+        }
+        // Values land at opposite ends of the shared range
+        assertEquals(3, binsA.get(0).count() + binsA.get(1).count());
+        assertEquals(3, binsB.get(3).count() + binsB.get(4).count());
+    }
+
+    @Test
+    void explicitRangeRejectsInvertedRange() {
+        Dataset ds = Dataset.of(List.of(1, 2, 3));
+        assertThrows(IllegalArgumentException.class,
+                () -> Histogram.computeBins(ds, 4, 10, 0));
+    }
+
+    @Test
     void computeBinsRejectsBadArguments() {
         assertThrows(IllegalArgumentException.class,
                 () -> Histogram.computeBins(Dataset.of(List.of()), 4));

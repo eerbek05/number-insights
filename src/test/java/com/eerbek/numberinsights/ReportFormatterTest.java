@@ -31,7 +31,25 @@ class ReportFormatterTest {
         assertTrue(out.contains("\"count\": 8"));
         assertTrue(out.contains("\"mean\":"));
         assertTrue(out.contains("\"stdDev\":"));
+        assertTrue(out.contains("\"skewness\":"));
+        assertTrue(out.contains("\"excessKurtosis\":"));
+        assertTrue(out.contains("\"ci95Low\":"));
+        assertTrue(out.contains("\"outlierCount\":"));
         assertTrue(out.trim().startsWith("{"));
         assertTrue(out.trim().endsWith("}"));
+    }
+
+    @Test
+    void undefinedMeasuresRenderAsNullInJsonAndNaInTable() {
+        // A single value: sample variance, skewness, kurtosis are all undefined
+        StatisticsResult single = new DescriptiveStatistics(
+                com.eerbek.numberinsights.model.Dataset.of(List.of(42))).summary();
+
+        String json = new ReportFormatter(ReportFormatter.Format.JSON).format(single);
+        assertTrue(json.contains("\"skewness\": null"));
+        assertTrue(json.contains("\"sampleVariance\": null"));
+
+        String table = new ReportFormatter(ReportFormatter.Format.TABLE).format(single);
+        assertTrue(table.contains("n/a"));
     }
 }

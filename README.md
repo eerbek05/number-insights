@@ -27,22 +27,32 @@ No frameworks, no external runtime dependencies — the web server is the JDK's 
 
 ## Features
 
-- **Descriptive statistics** — count, sum, min, max, range, mean, median, mode(s),
-  variance, standard deviation, quartiles (Q1/Q3) and inter-quartile range.
-- **Interactive web UI** — paste or upload data in the browser; get stat tiles, a
-  hoverable SVG histogram with adjustable bin count, a box plot of the five-number
-  summary, a full statistics table and one-click JSON export. Automatic light/dark
-  theme.
-- **ASCII histogram** — see the shape of the distribution (skew, spread, modality)
-  right in your terminal.
-- **JSON API** — `POST /api/analyze` takes raw numeric text and returns statistics
-  plus histogram bins, so the analysis engine is scriptable from any language.
+- **Full descriptive statistics** — count, sum, min/max/range, mean, median,
+  mode(s), population *and* sample variance/std dev, skewness, excess kurtosis,
+  coefficient of variation, standard error, 95% confidence interval of the mean,
+  percentiles (P5/Q1/Q3/P95), IQR, Tukey fences and outlier count — the complete
+  toolkit of an introductory statistics course.
+- **Two-sample comparison** — paste a second dataset and get **Welch's t-test**
+  (t statistic, Welch–Satterthwaite df, exact two-sided p-value) plus **Cohen's d**
+  effect size, side-by-side histograms with *aligned bins*, dual box plots on a
+  shared scale, and a Δ column in the statistics table.
+- **Normal distribution overlay** — a normal curve fitted to each dataset's mean
+  and standard deviation drawn over the histogram, so departures from normality
+  (skew, heavy tails, bimodality) are visible at a glance.
+- **Interactive web UI** — stat tiles, hoverable SVG histogram with adjustable bin
+  count, box plots, full statistics table and one-click JSON export. Automatic
+  light/dark theme.
+- **ASCII histogram** — see the shape of the distribution right in your terminal.
+- **JSON API** — `POST /api/analyze` and `POST /api/compare` take raw numeric text
+  and return the full analysis, so the engine is scriptable from any language.
 - **Flexible input** — one-number-per-line text files *or* delimited data
   (comma / semicolon / tab / space), so plain `.txt` and `.csv` both work.
   Blank lines and `#` comments are ignored.
 - **Multiple output formats** — human-readable `table` or machine-readable `json`.
 - **Robust CLI** — clear error messages, `--help`, and proper exit codes.
-- **Zero runtime dependencies** — pure JDK; JUnit is used for tests only.
+- **Zero runtime dependencies** — pure JDK; even the Student-t p-value is computed
+  in-house (Lanczos log-gamma + continued-fraction incomplete beta). JUnit is used
+  for tests only.
 
 ## Quick start
 
@@ -74,9 +84,20 @@ Median       : 51.0000
 Mode         : 71
 Variance     : 842.6305
 Std Dev      : 29.0281
+Sample Var   : 843.4740
+Sample Std   : 29.0426
+Skewness     : -0.0656
+Kurtosis*    : -1.2232
+CV           : 0.5786
+Std Error    : 0.9184
+95% CI       : [48.3909, 51.9911]
+P5           : 4.0000
 Q1 (25%)     : 25.0000
 Q3 (75%)     : 75.0000
+P95          : 94.0000
 IQR          : 50.0000
+Fences       : [-50.0000, 150.0000]
+Outliers     : 0
 
 Distribution
 ============
@@ -118,20 +139,38 @@ EXAMPLES:
 
 `--serve` starts an embedded web server (the JDK's own `HttpServer` — no servlet
 container). The single-page frontend is bundled into the JAR; open the printed URL,
-paste or upload your data and explore the charts. The dark theme follows your OS
-preference:
+paste or upload your data and explore the charts.
+
+**Comparing two datasets** — click *"+ Compare with a second dataset"*, paste the
+second sample and analyze. The histograms share bin edges (computed server-side
+over the combined range), the box plots share one scale, the table gains a Δ
+column, and a Welch's t-test card reports whether the difference in means is
+statistically significant:
+
+![Two-sample comparison](docs/screenshot-compare.png)
+
+The dark theme follows your OS preference:
 
 ![Web UI dark mode](docs/screenshot-dark.png)
 
-The same endpoint the UI uses is a plain JSON API:
+The same endpoints the UI uses form a plain JSON API:
 
 ```bash
+# Single dataset
 curl -X POST --data-binary @sample-data/numbers.txt "http://localhost:8080/api/analyze?bins=12"
+
+# Two datasets, separated by a --- line
+printf '1 2 3 4 5 6 7 8\n---\n5 6 7 8 9 10 11 12\n' | \
+  curl -X POST --data-binary @- "http://localhost:8080/api/compare?bins=8"
 ```
 ```json
 {
-  "stats":     { "count": 1000, "mean": 50.1910, "median": 51.0000, "stdDev": 29.0281, ... },
-  "histogram": [ { "low": 0.0, "high": 8.25, "count": 97 }, ... ]
+  "a": { "stats": { "count": 8, "mean": 4.5, "skewness": 0.0, ... }, "histogram": [...] },
+  "b": { "stats": { "count": 8, "mean": 8.5, ... },                  "histogram": [...] },
+  "comparison": {
+    "meanDifference": -4.0, "cohensD": -1.633,
+    "tStatistic": -3.266, "degreesOfFreedom": 14.0, "pValue": 0.005617
+  }
 }
 ```
 
@@ -171,9 +210,9 @@ DataLoader → Dataset ──┤
 | `cli`      | Parse command-line arguments (`CliOptions`)                           |
 | `io`       | Read and parse text/CSV input (`DataLoader`)                          |
 | `model`    | The immutable `Dataset` shared by every analyzer                     |
-| `stats`    | Descriptive statistics (`DescriptiveStatistics`, `StatisticsResult`) |
+| `stats`    | Descriptive statistics (`DescriptiveStatistics`, `StatisticsResult`) and two-sample inference (`Inference`: Welch's t-test, Cohen's d) |
 | `analysis` | The original Lab 13 stream pipelines (`StreamAnalyzer`)              |
-| `viz`      | Histogram binning + ASCII rendering (`Histogram`)                    |
+| `viz`      | Histogram binning (own or shared range) + ASCII rendering (`Histogram`) |
 | `report`   | Table / JSON formatting (`ReportFormatter`)                          |
 | `web`      | Embedded HTTP server + JSON API (`WebServer`)                        |
 
@@ -192,24 +231,27 @@ number-insights/
 ├── sample-data/                # Example .txt and .csv inputs
 ├── src/main/java/...           # Application sources
 ├── src/main/resources/web/     # Single-page frontend (vanilla JS + SVG)
-└── src/test/java/...           # 48 JUnit 5 tests
+└── src/test/java/...           # 72 JUnit 5 tests
 ```
 
 ## Development
 
 ```bash
-mvn test        # run the test suite (48 tests)
+mvn test        # run the test suite (72 tests)
 mvn package     # run tests and build target/number-insights.jar
 mvn verify      # full build used by CI
 ```
 
 ### Testing
 
-The suite covers every layer: statistics correctness (against textbook values),
-input parsing (delimiters, comments, error reporting), histogram binning, CLI
+The suite covers every layer: statistics correctness (skewness/kurtosis against
+spreadsheet-verified values, quartiles against interpolation math), the t-test
+numerics (log-gamma against Γ identities, p-values against classic t-table
+critical values like *t(0.025, df=10) = 2.228*), input parsing (delimiters,
+comments, error reporting), histogram binning (own and shared ranges), CLI
 argument handling, HTTP integration tests that drive a real `WebServer` instance
-over the JDK's `HttpClient`, and the original coursework regression tests that pin
-the exact stream-pipeline results.
+over the JDK's `HttpClient` (including `/api/compare` bin alignment), and the
+original coursework regression tests that pin the exact stream-pipeline results.
 
 ## Tech stack
 
