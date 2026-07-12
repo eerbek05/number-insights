@@ -1,0 +1,6 @@
+# Example CSV input: exam scores (comma-separated on each line)
+88, 92, 75, 63, 100
+54, 71, 82, 90, 66
+45, 78, 83, 91, 59
+70, 68, 74, 85, 95
+100, 62, 57, 88, 73
