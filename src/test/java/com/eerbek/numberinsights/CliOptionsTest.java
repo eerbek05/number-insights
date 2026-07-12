@@ -59,6 +59,30 @@ class CliOptionsTest {
     }
 
     @Test
+    void serveFlagWithDefaultPort() {
+        CliOptions options = CliOptions.parse(new String[] {"--serve"});
+        assertTrue(options.serve());
+        assertEquals(CliOptions.DEFAULT_PORT, options.port());
+        assertFalse(options.showStats()); // serve mode does not force the stats view
+    }
+
+    @Test
+    void parsesCustomPort() {
+        CliOptions options = CliOptions.parse(new String[] {"--serve", "--port", "9000"});
+        assertEquals(9000, options.port());
+    }
+
+    @Test
+    void invalidPortIsRejected() {
+        assertThrows(IllegalArgumentException.class,
+                () -> CliOptions.parse(new String[] {"--serve", "--port", "abc"}));
+        assertThrows(IllegalArgumentException.class,
+                () -> CliOptions.parse(new String[] {"--serve", "--port", "70000"}));
+        assertThrows(IllegalArgumentException.class,
+                () -> CliOptions.parse(new String[] {"--serve", "--port"}));
+    }
+
+    @Test
     void extraPositionalArgumentIsRejected() {
         assertThrows(IllegalArgumentException.class,
                 () -> CliOptions.parse(new String[] {"a.txt", "b.txt"}));

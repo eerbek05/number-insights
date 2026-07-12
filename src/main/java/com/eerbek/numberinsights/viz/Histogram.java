@@ -2,17 +2,29 @@ package com.eerbek.numberinsights.viz;
 
 import com.eerbek.numberinsights.model.Dataset;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
 
 /**
- * Renders a dataset as a text-based (ASCII) histogram.
+ * Bins a dataset into equal-width buckets and renders the result.
  *
- * <p>The value range is divided into a fixed number of equal-width bins and each
- * bin is drawn as a horizontal bar scaled to the terminal width. This gives an
- * at-a-glance view of the distribution's shape (skew, modality, spread) directly
- * in the console — no GUI or plotting library required.</p>
+ * <p>The binning logic ({@link #computeBins}) is independent of any output
+ * medium: the CLI renders the bins as an ASCII bar chart via {@link #render},
+ * while the web layer serialises the same bins to JSON and lets the browser
+ * draw them as an SVG column chart. One computation, two front-ends.</p>
  */
 public final class Histogram {
+
+    /**
+     * One histogram bucket.
+     *
+     * @param low   inclusive lower edge
+     * @param high  upper edge (inclusive for the last bin)
+     * @param count number of observations falling inside the bucket
+     */
+    public record Bin(double low, double high, int count) {
+    }
 
     private final int bins;
     private final int maxBarWidth;
@@ -24,7 +36,7 @@ public final class Histogram {
 
     /**
      * @param bins        number of equal-width buckets (must be positive)
-     * @param maxBarWidth width in characters of the longest bar (must be positive)
+     * @param maxBarWidth width in characters of the longest ASCII bar (must be positive)
      */
     public Histogram(int bins, int maxBarWidth) {
         if (bins <= 0 || maxBarWidth <= 0) {
@@ -35,42 +47,61 @@ public final class Histogram {
     }
 
     /**
-     * Builds the multi-line histogram string for the given dataset.
+     * Splits the dataset's value range into {@code binCount} equal-width buckets.
+     *
+     * @param dataset  the data to bin; must not be empty
+     * @param binCount the number of buckets (must be positive)
+     * @return the buckets in ascending order; counts sum to {@code dataset.size()}
+     * @throws IllegalArgumentException if the dataset is empty or {@code binCount < 1}
+     */
+    public static List<Bin> computeBins(Dataset dataset, int binCount) {
+        if (dataset.isEmpty()) {
+            throw new IllegalArgumentException("Cannot bin an empty dataset");
+        }
+        if (binCount <= 0) {
+            throw new IllegalArgumentException("binCount must be positive");
+        }
+
+        int min = dataset.stream().mapToInt(Integer::intValue).min().orElseThrow();
+        int max = dataset.stream().mapToInt(Integer::intValue).max().orElseThrow();
+
+        int[] counts = new int[binCount];
+        double width = (max - min) / (double) binCount;
+        for (int value : dataset.stream().mapToInt(Integer::intValue).toArray()) {
+            int index = (width == 0) ? 0 : (int) ((value - min) / width);
+            if (index >= binCount) {
+                index = binCount - 1; // the maximum value falls into the last bin
+            }
+            counts[index]++;
+        }
+
+        List<Bin> result = new ArrayList<>(binCount);
+        for (int i = 0; i < binCount; i++) {
+            double lowEdge = min + i * width;
+            double highEdge = (i == binCount - 1) ? max : min + (i + 1) * width;
+            result.add(new Bin(lowEdge, highEdge, counts[i]));
+        }
+        return result;
+    }
+
+    /**
+     * Builds the multi-line ASCII histogram string for the given dataset.
      *
      * @param dataset the data to plot; must not be empty
      * @return a printable, multi-line histogram
      * @throws IllegalArgumentException if the dataset is empty
      */
     public String render(Dataset dataset) {
-        if (dataset.isEmpty()) {
-            throw new IllegalArgumentException("Cannot render a histogram for an empty dataset");
-        }
+        List<Bin> computed = computeBins(dataset, bins);
 
-        int min = dataset.stream().mapToInt(Integer::intValue).min().orElseThrow();
-        int max = dataset.stream().mapToInt(Integer::intValue).max().orElseThrow();
-
-        int[] counts = new int[bins];
-        double width = (max - min) / (double) bins;
-        for (int value : dataset.stream().mapToInt(Integer::intValue).toArray()) {
-            int index = (width == 0) ? 0 : (int) ((value - min) / width);
-            if (index >= bins) {
-                index = bins - 1; // the maximum value falls into the last bin
-            }
-            counts[index]++;
-        }
-
-        int peak = 0;
-        for (int c : counts) {
-            peak = Math.max(peak, c);
-        }
+        int peak = computed.stream().mapToInt(Bin::count).max().orElse(0);
 
         StringBuilder sb = new StringBuilder();
-        for (int i = 0; i < bins; i++) {
-            double lowEdge = min + i * width;
-            double highEdge = (i == bins - 1) ? max : min + (i + 1) * width;
-            int barLength = (peak == 0) ? 0 : (int) Math.round((counts[i] / (double) peak) * maxBarWidth);
+        for (Bin bin : computed) {
+            int barLength = (peak == 0) ? 0
+                    : (int) Math.round((bin.count() / (double) peak) * maxBarWidth);
             sb.append(String.format(Locale.ROOT, "%8.1f - %8.1f | %s %d%n",
-                    lowEdge, highEdge, "#".repeat(barLength), counts[i]));
+                    bin.low(), bin.high(), "#".repeat(barLength), bin.count()));
         }
         return sb.toString();
     }

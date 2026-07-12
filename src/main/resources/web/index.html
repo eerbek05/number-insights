@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Number Insights</title>
+<style>
+  :root {
+    --page:           #f9f9f7;
+    --surface-1:      #fcfcfb;
+    --text-primary:   #0b0b0b;
+    --text-secondary: #52514e;
+    --text-muted:     #898781;
+    --gridline:       #e1e0d9;
+    --baseline:       #c3c2b7;
+    --border:         rgba(11, 11, 11, 0.10);
+    --series-1:       #2a78d6;
+    --critical:       #d03b3b;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --page:           #0d0d0d;
+      --surface-1:      #1a1a19;
+      --text-primary:   #ffffff;
+      --text-secondary: #c3c2b7;
+      --text-muted:     #898781;
+      --gridline:       #2c2c2a;
+      --baseline:       #383835;
+      --border:         rgba(255, 255, 255, 0.10);
+      --series-1:       #3987e5;
+      --critical:       #e66767;
+    }
+  }
+
+  * { box-sizing: border-box; margin: 0; }
+
+  body {
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    background: var(--page);
+    color: var(--text-primary);
+    line-height: 1.45;
+  }
+
+  .wrap { max-width: 960px; margin: 0 auto; padding: 28px 20px 64px; }
+
+  header h1 { font-size: 22px; font-weight: 650; }
+  header p  { color: var(--text-secondary); font-size: 14px; margin-top: 2px; }
+
+  .card {
+    background: var(--surface-1);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 18px;
+    margin-top: 18px;
+  }
+  .card h2 { font-size: 14px; font-weight: 600; color: var(--text-secondary); margin-bottom: 12px; }
+
+  textarea {
+    width: 100%;
+    min-height: 110px;
+    resize: vertical;
+    font: 13px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    color: var(--text-primary);
+    background: var(--page);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 12px;
+  }
+  textarea:focus { outline: 2px solid var(--series-1); outline-offset: -1px; }
+
+  .controls { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 12px; }
+
+  button, .file-btn, select {
+    font: inherit;
+    font-size: 13px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--surface-1);
+    color: var(--text-primary);
+    padding: 7px 14px;
+    cursor: pointer;
+  }
+  button:hover, .file-btn:hover { border-color: var(--text-muted); }
+  button.primary {
+    background: var(--series-1);
+    border-color: var(--series-1);
+    color: #fff;
+    font-weight: 600;
+  }
+  button.primary:hover { filter: brightness(1.08); }
+  .file-btn input { display: none; }
+  label.bins { font-size: 13px; color: var(--text-secondary); display: flex; align-items: center; gap: 6px; }
+
+  .error {
+    display: none;
+    margin-top: 12px;
+    padding: 10px 14px;
+    border-radius: 8px;
+    border: 1px solid var(--critical);
+    color: var(--critical);
+    font-size: 13px;
+  }
+  .error.show { display: block; }
+
+  #results { display: none; }
+  #results.show { display: block; }
+
+  /* Stat tiles */
+  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-top: 18px; }
+  .tile {
+    background: var(--surface-1);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 16px;
+  }
+  .tile .label { font-size: 12px; color: var(--text-secondary); }
+  .tile .value { font-size: 26px; font-weight: 600; margin-top: 2px; }
+
+  /* Charts */
+  .chart-box { position: relative; }
+  svg { display: block; width: 100%; height: auto; }
+  svg text { font-family: system-ui, -apple-system, "Segoe UI", sans-serif; }
+
+  .tooltip {
+    position: absolute;
+    pointer-events: none;
+    background: var(--surface-1);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
+    padding: 7px 11px;
+    font-size: 12px;
+    opacity: 0;
+    transition: opacity 0.08s;
+    white-space: nowrap;
+    z-index: 5;
+  }
+  .tooltip.show { opacity: 1; }
+  .tooltip .t-title { color: var(--text-secondary); }
+  .tooltip .t-value { font-weight: 600; }
+
+  /* Table */
+  table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  th, td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--gridline); }
+  th { color: var(--text-secondary); font-weight: 600; font-size: 12.5px; }
+  td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  th.num { text-align: right; }
+  tr:last-child td { border-bottom: none; }
+
+  .row-actions { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+  .row-actions h2 { margin-bottom: 0; }
+  .hint { font-size: 12px; color: var(--text-muted); margin-top: 8px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Number Insights</h1>
+    <p>Paste or upload a numeric dataset to get descriptive statistics and distribution charts.</p>
+  </header>
+
+  <!-- Input -->
+  <section class="card">
+    <h2>Data input</h2>
+    <textarea id="input" placeholder="One number per line, or comma/semicolon/tab separated — e.g.&#10;12, 47, 33&#10;58&#10;# comment lines are ignored"></textarea>
+    <div class="controls">
+      <button class="primary" id="analyze">Analyze</button>
+      <label class="file-btn">Upload .txt / .csv<input type="file" id="file" accept=".txt,.csv,text/plain,text/csv"></label>
+      <button id="sample">Load sample data</button>
+      <label class="bins">Bins
+        <select id="bins">
+          <option>8</option>
+          <option selected>12</option>
+          <option>16</option>
+          <option>24</option>
+        </select>
+      </label>
+    </div>
+    <div class="error" id="error" role="alert"></div>
+  </section>
+
+  <!-- Results -->
+  <div id="results">
+    <div class="tiles" id="tiles"></div>
+
+    <section class="card">
+      <h2 id="histTitle">Distribution — histogram</h2>
+      <div class="chart-box" id="histBox">
+        <div class="tooltip" id="histTip"></div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Five-number summary — box plot</h2>
+      <div class="chart-box" id="boxBox">
+        <div class="tooltip" id="boxTip"></div>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="row-actions">
+        <h2>All statistics</h2>
+        <button id="copyJson">Copy JSON</button>
+      </div>
+      <table id="statsTable"></table>
+    </section>
+  </div>
+</div>
+
+<script>
+"use strict";
+
+const $ = id => document.getElementById(id);
+const SVGNS = "http://www.w3.org/2000/svg";
+let lastResponse = null;
+
+/* ---------- helpers ---------- */
+
+function css(name) {
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+}
+
+function el(name, attrs, text) {
+  const node = document.createElementNS(SVGNS, name);
+  for (const [k, v] of Object.entries(attrs || {})) node.setAttribute(k, v);
+  if (text !== undefined) node.textContent = text;
+  return node;
+}
+
+function fmt(x, digits = 2) {
+  if (Number.isInteger(x)) return x.toLocaleString("en-US");
+  return x.toLocaleString("en-US", { minimumFractionDigits: digits, maximumFractionDigits: digits });
+}
+
+/* Clean ~4-step y ticks: 1/2/5 × 10^k */
+function niceTicks(max) {
+  if (max <= 0) return [0, 1];
+  const rough = max / 4;
+  const pow = Math.pow(10, Math.floor(Math.log10(rough)));
+  const step = [1, 2, 5, 10].map(m => m * pow).find(s => s >= rough);
+  const ticks = [];
+  for (let v = 0; v <= max; v += step) ticks.push(v);
+  if (ticks[ticks.length - 1] < max) ticks.push(ticks[ticks.length - 1] + step);
+  return ticks;
+}
+
+/* Column with a 4px rounded data-end (top) and a square baseline */
+function roundedTopRect(x, y, w, h, r) {
+  r = Math.min(r, w / 2, h);
+  return `M${x},${y + h} V${y + r} Q${x},${y} ${x + r},${y} H${x + w - r} Q${x + w},${y} ${x + w},${y + r} V${y + h} Z`;
+}
+
+/* ---------- input handling ---------- */
+
+$("file").addEventListener("change", e => {
+  const f = e.target.files[0];
+  if (!f) return;
+  f.text().then(text => { $("input").value = text; });
+});
+
+$("sample").addEventListener("click", () => {
+  // Roughly bell-shaped sample: sum of three uniform draws, scaled to 0–100.
+  const values = [];
+  for (let i = 0; i < 400; i++) {
+    values.push(Math.round((Math.random() + Math.random() + Math.random()) / 3 * 100));
+  }
+  $("input").value = values.join("\n");
+});
+
+$("analyze").addEventListener("click", analyze);
+$("bins").addEventListener("change", () => { if (lastResponse) analyze(); });
+
+$("copyJson").addEventListener("click", () => {
+  if (!lastResponse) return;
+  navigator.clipboard.writeText(JSON.stringify(lastResponse, null, 2)).then(() => {
+    $("copyJson").textContent = "Copied!";
+    setTimeout(() => { $("copyJson").textContent = "Copy JSON"; }, 1200);
+  });
+});
+
+async function analyze() {
+  const body = $("input").value;
+  const errBox = $("error");
+  errBox.classList.remove("show");
+
+  if (!body.trim()) {
+    return showError("Enter some data first — paste numbers or upload a file.");
+  }
+
+  try {
+    const res = await fetch("/api/analyze?bins=" + encodeURIComponent($("bins").value), {
+      method: "POST",
+      headers: { "Content-Type": "text/plain; charset=utf-8" },
+      body
+    });
+    const data = await res.json();
+    if (!res.ok) return showError(data.error || ("Request failed with status " + res.status));
+    lastResponse = data;
+    render(data);
+  } catch (e) {
+    showError("Could not reach the analysis server: " + e.message);
+  }
+}
+
+function showError(message) {
+  const errBox = $("error");
+  errBox.textContent = message;
+  errBox.classList.add("show");
+  $("results").classList.remove("show");
+}
+
+/* ---------- rendering ---------- */
+
+function render(data) {
+  renderTiles(data.stats);
+  renderHistogram(data.histogram, data.stats.count);
+  renderBoxPlot(data.stats);
+  renderTable(data.stats);
+  $("results").classList.add("show");
+}
+
+function renderTiles(s) {
+  const tiles = [
+    ["Count", fmt(s.count)],
+    ["Mean", fmt(s.mean)],
+    ["Median", fmt(s.median)],
+    ["Std dev", fmt(s.stdDev)]
+  ];
+  $("tiles").innerHTML = tiles.map(([label, value]) =>
+    `<div class="tile"><div class="label">${label}</div><div class="value">${value}</div></div>`
+  ).join("");
+}
+
+function renderHistogram(bins, total) {
+  const W = 860, H = 300;
+  const pad = { top: 16, right: 12, bottom: 34, left: 46 };
+  const plotW = W - pad.left - pad.right;
+  const plotH = H - pad.top - pad.bottom;
+
+  const box = $("histBox");
+  box.querySelector("svg")?.remove();
+  const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, role: "img",
+    "aria-label": "Histogram of the dataset distribution" });
+
+  const maxCount = Math.max(...bins.map(b => b.count));
+  const ticks = niceTicks(maxCount);
+  const yMax = ticks[ticks.length - 1];
+  const y = v => pad.top + plotH - (v / yMax) * plotH;
+
+  // Hairline gridlines + y tick labels (muted ink, never data color)
+  for (const t of ticks) {
+    svg.append(el("line", { x1: pad.left, x2: W - pad.right, y1: y(t), y2: y(t),
+      stroke: css("--gridline"), "stroke-width": 1 }));
+    svg.append(el("text", { x: pad.left - 8, y: y(t) + 4, "text-anchor": "end",
+      "font-size": 11, fill: css("--text-muted"), style: "font-variant-numeric: tabular-nums" }, fmt(t)));
+  }
+
+  // Columns: ≤24px thick, 2px surface gap between neighbours, rounded data-end
+  const slot = plotW / bins.length;
+  const barW = Math.min(24, slot - 2);
+  const tip = $("histTip");
+
+  bins.forEach((b, i) => {
+    const barH = (b.count / yMax) * plotH;
+    const x = pad.left + i * slot + (slot - barW) / 2;
+    const path = el("path", {
+      d: roundedTopRect(x, y(b.count), barW, Math.max(barH, 0.5), 4),
+      fill: css("--series-1")
+    });
+
+    // Hover target covers the full slot height, easier to hit than the bar
+    const hit = el("rect", { x: pad.left + i * slot, y: pad.top, width: slot, height: plotH,
+      fill: "transparent" });
+    hit.addEventListener("mouseenter", () => {
+      path.setAttribute("opacity", "0.75");
+      const pct = total ? (b.count / total * 100).toFixed(1) : "0";
+      tip.innerHTML = `<div class="t-title">${fmt(b.low, 1)} – ${fmt(b.high, 1)}</div>` +
+                      `<div class="t-value">${fmt(b.count)} values · ${pct}%</div>`;
+      tip.classList.add("show");
+    });
+    hit.addEventListener("mousemove", e => {
+      const r = box.getBoundingClientRect();
+      tip.style.left = Math.min(e.clientX - r.left + 14, r.width - tip.offsetWidth - 4) + "px";
+      tip.style.top = (e.clientY - r.top - 40) + "px";
+    });
+    hit.addEventListener("mouseleave", () => {
+      path.removeAttribute("opacity");
+      tip.classList.remove("show");
+    });
+
+    svg.append(path, hit);
+
+    // X labels on bin edges, thinned to ~6 so they never collide
+    const every = Math.ceil(bins.length / 6);
+    if (i % every === 0) {
+      svg.append(el("text", { x: pad.left + i * slot, y: H - 12, "text-anchor": "middle",
+        "font-size": 11, fill: css("--text-muted") }, fmt(b.low, 0)));
+    }
+  });
+  svg.append(el("text", { x: pad.left + plotW, y: H - 12, "text-anchor": "end",
+    "font-size": 11, fill: css("--text-muted") }, fmt(bins[bins.length - 1].high, 0)));
+
+  // Baseline (axis) above the bars' feet
+  svg.append(el("line", { x1: pad.left, x2: W - pad.right, y1: y(0), y2: y(0),
+    stroke: css("--baseline"), "stroke-width": 1 }));
+
+  box.append(svg);
+  $("histTitle").textContent = `Distribution — histogram (${bins.length} bins)`;
+}
+
+function renderBoxPlot(s) {
+  const W = 860, H = 150;
+  const pad = { left: 46, right: 46 };
+  const plotW = W - pad.left - pad.right;
+  const midY = 62, boxH = 34;
+
+  const box = $("boxBox");
+  box.querySelector("svg")?.remove();
+  const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, role: "img",
+    "aria-label": "Box plot of the five-number summary" });
+
+  const span = s.max - s.min || 1;
+  const x = v => pad.left + ((v - s.min) / span) * plotW;
+  const series = css("--series-1");
+  const muted = css("--text-muted");
+
+  // Whiskers: 2px lines with end caps
+  for (const [a, b] of [[s.min, s.q1], [s.q3, s.max]]) {
+    svg.append(el("line", { x1: x(a), x2: x(b), y1: midY, y2: midY,
+      stroke: series, "stroke-width": 2 }));
+  }
+  for (const v of [s.min, s.max]) {
+    svg.append(el("line", { x1: x(v), x2: x(v), y1: midY - 9, y2: midY + 9,
+      stroke: series, "stroke-width": 2 }));
+  }
+
+  // IQR box: series hue as a ~10% wash with a 2px outline
+  svg.append(el("rect", { x: x(s.q1), y: midY - boxH / 2, width: Math.max(x(s.q3) - x(s.q1), 1),
+    height: boxH, rx: 4, fill: series, "fill-opacity": 0.1, stroke: series, "stroke-width": 2 }));
+
+  // Median line
+  svg.append(el("line", { x1: x(s.median), x2: x(s.median), y1: midY - boxH / 2, y2: midY + boxH / 2,
+    stroke: series, "stroke-width": 2 }));
+
+  // Selective direct labels in muted ink: the five summary numbers
+  const labels = [
+    [s.min, "Min", midY + 30], [s.q1, "Q1", midY + 30], [s.median, "Median", midY - 28],
+    [s.q3, "Q3", midY + 30], [s.max, "Max", midY + 30]
+  ];
+  for (const [v, name, ly] of labels) {
+    svg.append(el("text", { x: x(v), y: ly, "text-anchor": "middle", "font-size": 11,
+      fill: muted }, `${name} ${fmt(v)}`));
+  }
+
+  // Hover: whole plot shows IQR summary
+  const tip = $("boxTip");
+  const hit = el("rect", { x: pad.left, y: midY - boxH, width: plotW, height: boxH * 2, fill: "transparent" });
+  hit.addEventListener("mouseenter", () => {
+    tip.innerHTML = `<div class="t-title">IQR (Q3 − Q1)</div><div class="t-value">${fmt(s.iqr)}</div>`;
+    tip.classList.add("show");
+  });
+  hit.addEventListener("mousemove", e => {
+    const r = box.getBoundingClientRect();
+    tip.style.left = Math.min(e.clientX - r.left + 14, r.width - tip.offsetWidth - 4) + "px";
+    tip.style.top = (e.clientY - r.top - 40) + "px";
+  });
+  hit.addEventListener("mouseleave", () => tip.classList.remove("show"));
+  svg.append(hit);
+
+  box.append(svg);
+}
+
+function renderTable(s) {
+  const rows = [
+    ["Count", fmt(s.count)], ["Sum", fmt(s.sum)], ["Min", fmt(s.min)], ["Max", fmt(s.max)],
+    ["Range", fmt(s.range)], ["Mean", fmt(s.mean, 4)], ["Median", fmt(s.median, 4)],
+    ["Mode(s)", s.modes.map(m => fmt(m)).join(", ")], ["Variance", fmt(s.variance, 4)],
+    ["Std dev", fmt(s.stdDev, 4)], ["Q1 (25%)", fmt(s.q1, 4)], ["Q3 (75%)", fmt(s.q3, 4)],
+    ["IQR", fmt(s.iqr, 4)]
+  ];
+  $("statsTable").innerHTML =
+    "<tr><th>Measure</th><th class=\"num\">Value</th></tr>" +
+    rows.map(([k, v]) => `<tr><td>${k}</td><td class="num">${v}</td></tr>`).join("");
+}
+</script>
+</body>
+</html>

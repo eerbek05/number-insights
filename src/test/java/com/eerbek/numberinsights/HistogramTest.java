@@ -48,4 +48,22 @@ class HistogramTest {
         String output = new Histogram(4, 10).render(ds);
         assertTrue(output.contains("4"));
     }
+
+    @Test
+    void computeBinsCoversTheFullRangeAndSumsToSize() {
+        Dataset ds = Dataset.of(List.of(0, 5, 10, 15, 20));
+        List<Histogram.Bin> bins = Histogram.computeBins(ds, 4);
+        assertEquals(4, bins.size());
+        assertEquals(0.0, bins.get(0).low());
+        assertEquals(20.0, bins.get(3).high());
+        assertEquals(ds.size(), bins.stream().mapToInt(Histogram.Bin::count).sum());
+    }
+
+    @Test
+    void computeBinsRejectsBadArguments() {
+        assertThrows(IllegalArgumentException.class,
+                () -> Histogram.computeBins(Dataset.of(List.of()), 4));
+        assertThrows(IllegalArgumentException.class,
+                () -> Histogram.computeBins(Dataset.of(List.of(1)), 0));
+    }
 }
