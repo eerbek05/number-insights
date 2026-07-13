@@ -165,4 +165,122 @@ class WebServerTest {
                 HttpResponse.BodyHandlers.ofString());
         assertEquals(400, res.statusCode());
     }
+
+    @Test
+    void healthEndpointReportsOk() throws Exception {
+        HttpResponse<String> res = client.send(
+                HttpRequest.newBuilder(URI.create(base + "/health")).GET().build(),
+                HttpResponse.BodyHandlers.ofString());
+        assertEquals(200, res.statusCode());
+        assertTrue(res.body().contains("\"status\": \"ok\""));
+        assertTrue(res.body().contains("\"version\""));
+    }
+
+    @Test
+    void securityHeadersArePresent() throws Exception {
+        HttpResponse<String> res = client.send(
+                HttpRequest.newBuilder(URI.create(base + "/")).GET().build(),
+                HttpResponse.BodyHandlers.ofString());
+        assertEquals("nosniff", res.headers().firstValue("X-Content-Type-Options").orElse(""));
+        assertTrue(res.headers().firstValue("Content-Security-Policy").orElse("").contains("default-src 'none'"));
+    }
+
+    @Test
+    void analyzeAcceptsDecimals() throws Exception {
+        HttpResponse<String> res = client.send(
+                HttpRequest.newBuilder(URI.create(base + "/api/analyze"))
+                        .POST(HttpRequest.BodyPublishers.ofString("1.5\n2.5\n3.5\n4.5"))
+                        .build(),
+                HttpResponse.BodyHandlers.ofString());
+        assertEquals(200, res.statusCode());
+        assertTrue(res.body().contains("\"mean\": 3.0000"));
+        assertTrue(res.body().contains("\"percentiles\": ["));
+        assertTrue(res.body().contains("\"outliers\": ["));
+    }
+
+    @Test
+    void analyzeRunsOneSampleTTestWhenMuGiven() throws Exception {
+        HttpResponse<String> res = client.send(
+                HttpRequest.newBuilder(URI.create(base + "/api/analyze?mu=4"))
+                        .POST(HttpRequest.BodyPublishers.ofString("1 2 3 4 5 6 7 8 9 10"))
+                        .build(),
+                HttpResponse.BodyHandlers.ofString());
+        assertEquals(200, res.statusCode());
+        assertTrue(res.body().contains("\"oneSampleT\": {"));
+        assertTrue(res.body().contains("\"meanDifference\": 1.500000"));
+        assertTrue(res.body().contains("\"degreesOfFreedom\": 9.000000"));
+        assertTrue(res.body().contains("\"mu\": 4.000000"));
+    }
+
+    @Test
+    void pairedCompareReturnsPairedTestAndCorrelation() throws Exception {
+        String body = "1\n2\n3\n4\n5\n---\n3\n5\n7\n9\n11"; // y = 2x + 1
+        HttpResponse<String> res = client.send(
+                HttpRequest.newBuilder(URI.create(base + "/api/compare?paired=1"))
+                        .POST(HttpRequest.BodyPublishers.ofString(body))
+                        .build(),
+                HttpResponse.BodyHandlers.ofString());
+        assertEquals(200, res.statusCode());
+        assertTrue(res.body().contains("\"paired\": {"));
+        assertTrue(res.body().contains("\"pearsonR\": 1.000000"));
+        assertTrue(res.body().contains("\"slope\": 2.000000"));
+        assertTrue(res.body().contains("\"intercept\": 1.000000"));
+        assertTrue(res.body().contains("\"pairs\": [[1.000000, 3.000000]"));
+    }
+
+    @Test
+    void threeDatasetsRunAnova() throws Exception {
+        String body = "1 2 3\n---\n2 3 4\n---\n6 7 8";
+        HttpResponse<String> res = client.send(
+                HttpRequest.newBuilder(URI.create(base + "/api/compare?bins=4"))
+                        .POST(HttpRequest.BodyPublishers.ofString(body))
+                        .build(),
+                HttpResponse.BodyHandlers.ofString());
+        assertEquals(200, res.statusCode());
+        assertTrue(res.body().contains("\"sets\": ["));
+        assertTrue(res.body().contains("\"anova\": {"));
+        assertTrue(res.body().contains("\"fStatistic\": 21.000000"));
+        assertTrue(res.body().contains("\"dfBetween\": 2"));
+        assertTrue(res.body().contains("\"dfWithin\": 6"));
+    }
+
+    @Test
+    void chiSquareGoodnessOfFitEndpoint() throws Exception {
+        HttpResponse<String> res = client.send(
+                HttpRequest.newBuilder(URI.create(base + "/api/chisquare"))
+                        .POST(HttpRequest.BodyPublishers.ofString("10 20 30"))
+                        .build(),
+                HttpResponse.BodyHandlers.ofString());
+        assertEquals(200, res.statusCode());
+        assertTrue(res.body().contains("\"mode\": \"goodness-of-fit\""));
+        assertTrue(res.body().contains("\"statistic\": 10.000000"));
+        assertTrue(res.body().contains("\"df\": 2"));
+    }
+
+    @Test
+    void chiSquareIndependenceEndpoint() throws Exception {
+        HttpResponse<String> res = client.send(
+                HttpRequest.newBuilder(URI.create(base + "/api/chisquare"))
+                        .POST(HttpRequest.BodyPublishers.ofString("10, 20\n20, 10"))
+                        .build(),
+                HttpResponse.BodyHandlers.ofString());
+        assertEquals(200, res.statusCode());
+        assertTrue(res.body().contains("\"mode\": \"independence\""));
+        assertTrue(res.body().contains("\"df\": 1"));
+        assertTrue(res.body().contains("\"expected\": [[15.000000, 15.000000]"));
+    }
+
+    @Test
+    void oversizedBodyIsRejectedWith413() throws Exception {
+        // One byte over the cap; the server must refuse without reading it all in.
+        byte[] big = new byte[WebServer.MAX_BODY_BYTES + 1];
+        java.util.Arrays.fill(big, (byte) '1');
+        HttpResponse<String> res = client.send(
+                HttpRequest.newBuilder(URI.create(base + "/api/analyze"))
+                        .POST(HttpRequest.BodyPublishers.ofByteArray(big))
+                        .build(),
+                HttpResponse.BodyHandlers.ofString());
+        assertEquals(413, res.statusCode());
+        assertTrue(res.body().contains("limit"));
+    }
 }

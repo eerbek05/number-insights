@@ -22,9 +22,10 @@ public final class CliOptions {
     private final boolean help;
     private final boolean serve;
     private final int port;
+    private final Double testMean;
 
     private CliOptions(Path inputFile, boolean showStats, boolean showHistogram,
-                       Format format, boolean help, boolean serve, int port) {
+                       Format format, boolean help, boolean serve, int port, Double testMean) {
         this.inputFile = inputFile;
         this.showStats = showStats;
         this.showHistogram = showHistogram;
@@ -32,6 +33,7 @@ public final class CliOptions {
         this.help = help;
         this.serve = serve;
         this.port = port;
+        this.testMean = testMean;
     }
 
     public Path inputFile() {
@@ -64,6 +66,11 @@ public final class CliOptions {
         return port;
     }
 
+    /** @return the hypothesised mean for a one-sample t-test, or {@code null} */
+    public Double testMean() {
+        return testMean;
+    }
+
     /**
      * Parses raw command-line arguments.
      *
@@ -89,6 +96,7 @@ public final class CliOptions {
         boolean help = false;
         boolean serve = false;
         int port = DEFAULT_PORT;
+        Double testMean = null;
         Format format = Format.TABLE;
 
         for (int i = 0; i < args.length; i++) {
@@ -103,6 +111,16 @@ public final class CliOptions {
                         throw new IllegalArgumentException("--port requires a number");
                     }
                     port = parsePort(args[++i]);
+                }
+                case "--test-mean" -> {
+                    if (i + 1 >= args.length) {
+                        throw new IllegalArgumentException("--test-mean requires a number");
+                    }
+                    try {
+                        testMean = Double.parseDouble(args[++i].trim());
+                    } catch (NumberFormatException e) {
+                        throw new IllegalArgumentException("Invalid --test-mean value: " + args[i]);
+                    }
                 }
                 case "--format" -> {
                     if (i + 1 >= args.length) {
@@ -127,7 +145,7 @@ public final class CliOptions {
             stats = true;
         }
 
-        return new CliOptions(inputFile, stats, histogram, format, help, serve, port);
+        return new CliOptions(inputFile, stats, histogram, format, help, serve, port, testMean);
     }
 
     private static Format parseFormat(String value) {
@@ -162,6 +180,7 @@ public final class CliOptions {
                   --stats           Print descriptive statistics (default)
                   --histogram       Print an ASCII histogram of the distribution
                   --format <type>   Statistics output format: table (default) or json
+                  --test-mean <m>   Run a one-sample t-test of the mean against m
                   --serve           Start the web UI (paste or upload data in the browser)
                   --port <n>        Port for --serve mode (default 8080)
                   -h, --help        Show this help message

@@ -58,8 +58,8 @@ public final class Histogram {
         if (dataset.isEmpty()) {
             throw new IllegalArgumentException("Cannot bin an empty dataset");
         }
-        int min = dataset.stream().mapToInt(Integer::intValue).min().orElseThrow();
-        int max = dataset.stream().mapToInt(Integer::intValue).max().orElseThrow();
+        double min = dataset.doubleStream().min().orElseThrow();
+        double max = dataset.doubleStream().max().orElseThrow();
         return computeBins(dataset, binCount, min, max);
     }
 
@@ -90,7 +90,7 @@ public final class Histogram {
 
         int[] counts = new int[binCount];
         double width = (high - low) / binCount;
-        for (int value : dataset.stream().mapToInt(Integer::intValue).toArray()) {
+        for (double value : dataset.doubleStream().toArray()) {
             int index = (width == 0) ? 0 : (int) ((value - low) / width);
             // Clamp so the range's extremes (and rounding) land in the edge bins.
             index = Math.max(0, Math.min(index, binCount - 1));

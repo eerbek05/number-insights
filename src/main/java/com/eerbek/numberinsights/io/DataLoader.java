@@ -40,7 +40,7 @@ public final class DataLoader {
      * @param path the file to read
      * @return the parsed dataset
      * @throws UncheckedIOException     if the file cannot be read
-     * @throws IllegalArgumentException if a token cannot be parsed as an integer
+     * @throws IllegalArgumentException if a token cannot be parsed as a number
      */
     public static Dataset fromFile(Path path) {
         try {
@@ -56,10 +56,10 @@ public final class DataLoader {
      *
      * @param lines the raw lines of the source
      * @return the parsed dataset
-     * @throws IllegalArgumentException if a token cannot be parsed as an integer
+     * @throws IllegalArgumentException if a token cannot be parsed as a number
      */
     public static Dataset fromLines(List<String> lines) {
-        List<Integer> values = new ArrayList<>();
+        List<Double> values = new ArrayList<>();
         int lineNumber = 0;
         for (String line : lines) {
             lineNumber++;
@@ -72,10 +72,14 @@ public final class DataLoader {
                     continue;
                 }
                 try {
-                    values.add(Integer.parseInt(token));
+                    double value = Double.parseDouble(token);
+                    if (Double.isNaN(value) || Double.isInfinite(value)) {
+                        throw new NumberFormatException("not finite");
+                    }
+                    values.add(value);
                 } catch (NumberFormatException e) {
                     throw new IllegalArgumentException(
-                            "Invalid integer '" + token + "' on line " + lineNumber, e);
+                            "Invalid number '" + token + "' on line " + lineNumber, e);
                 }
             }
         }

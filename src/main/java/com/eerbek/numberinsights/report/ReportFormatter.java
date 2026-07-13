@@ -47,10 +47,10 @@ public final class ReportFormatter {
         sb.append("Descriptive Statistics\n");
         sb.append("======================\n");
         appendRow(sb, "Count", String.valueOf(s.count()));
-        appendRow(sb, "Sum", String.valueOf(s.sum()));
-        appendRow(sb, "Min", String.valueOf(s.min()));
-        appendRow(sb, "Max", String.valueOf(s.max()));
-        appendRow(sb, "Range", String.valueOf(s.range()));
+        appendRow(sb, "Sum", val(s.sum()));
+        appendRow(sb, "Min", val(s.min()));
+        appendRow(sb, "Max", val(s.max()));
+        appendRow(sb, "Range", val(s.range()));
         appendRow(sb, "Mean", num(s.mean()));
         appendRow(sb, "Median", num(s.median()));
         appendRow(sb, "Mode", modeString(s));
@@ -70,19 +70,20 @@ public final class ReportFormatter {
         appendRow(sb, "IQR", num(s.iqr()));
         appendRow(sb, "Fences", "[" + num(s.lowerFence()) + ", " + num(s.upperFence()) + "]");
         appendRow(sb, "Outliers", String.valueOf(s.outlierCount()));
-        sb.append("(*) excess kurtosis: 0 = normal distribution\n");
+        appendRow(sb, "JB test", num(s.jarqueBera()) + " (p = " + num(s.jarqueBeraP()) + ")");
+        sb.append("(*) excess kurtosis: 0 = normal distribution; JB = Jarque-Bera normality test\n");
         return sb.toString();
     }
 
     private String json(StatisticsResult s) {
         StringJoiner modes = new StringJoiner(", ", "[", "]");
-        s.modes().forEach(m -> modes.add(String.valueOf(m)));
+        s.modes().forEach(m -> modes.add(val(m)));
         return "{\n"
                 + "  \"count\": " + s.count() + ",\n"
-                + "  \"sum\": " + s.sum() + ",\n"
-                + "  \"min\": " + s.min() + ",\n"
-                + "  \"max\": " + s.max() + ",\n"
-                + "  \"range\": " + s.range() + ",\n"
+                + "  \"sum\": " + jsonNum(s.sum()) + ",\n"
+                + "  \"min\": " + jsonNum(s.min()) + ",\n"
+                + "  \"max\": " + jsonNum(s.max()) + ",\n"
+                + "  \"range\": " + jsonNum(s.range()) + ",\n"
                 + "  \"mean\": " + jsonNum(s.mean()) + ",\n"
                 + "  \"median\": " + jsonNum(s.median()) + ",\n"
                 + "  \"modes\": " + modes + ",\n"
@@ -103,7 +104,9 @@ public final class ReportFormatter {
                 + "  \"iqr\": " + jsonNum(s.iqr()) + ",\n"
                 + "  \"lowerFence\": " + jsonNum(s.lowerFence()) + ",\n"
                 + "  \"upperFence\": " + jsonNum(s.upperFence()) + ",\n"
-                + "  \"outlierCount\": " + s.outlierCount() + "\n"
+                + "  \"outlierCount\": " + s.outlierCount() + ",\n"
+                + "  \"jarqueBera\": " + jsonNum(s.jarqueBera()) + ",\n"
+                + "  \"jarqueBeraP\": " + jsonNum(s.jarqueBeraP()) + "\n"
                 + "}";
     }
 
@@ -113,8 +116,19 @@ public final class ReportFormatter {
 
     private static String modeString(StatisticsResult s) {
         StringJoiner joiner = new StringJoiner(", ");
-        s.modes().forEach(m -> joiner.add(String.valueOf(m)));
+        s.modes().forEach(m -> joiner.add(val(m)));
         return joiner.toString();
+    }
+
+    /** Whole numbers print without decimals; everything else with four. */
+    private static String val(double value) {
+        if (Double.isNaN(value) || Double.isInfinite(value)) {
+            return "n/a";
+        }
+        if (value == Math.rint(value) && Math.abs(value) < 1e15) {
+            return String.valueOf((long) value);
+        }
+        return String.format(Locale.ROOT, "%.4f", value);
     }
 
     private static String num(double value) {

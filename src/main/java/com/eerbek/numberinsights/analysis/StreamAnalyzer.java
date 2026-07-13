@@ -10,8 +10,9 @@ import com.eerbek.numberinsights.model.Dataset;
  * filtering, mapping, sorting, {@code limit}, {@code skip}, {@code distinct} and
  * {@code count}. The logic is byte-for-byte equivalent to the coursework version
  * — the accompanying regression tests still assert the exact same results — but
- * it now operates on the shared immutable {@code Dataset} model instead of owning
- * its own {@code ArrayList}.</p>
+ * it now operates on the shared immutable {@code Dataset} model (via its
+ * integer-truncating {@code intStream()} view, since the model itself stores
+ * doubles) instead of owning its own {@code ArrayList}.</p>
  */
 public final class StreamAnalyzer {
 
@@ -23,27 +24,27 @@ public final class StreamAnalyzer {
 
     /** @return the total number of observations */
     public long totalCount() {
-        return dataset.stream().count();
+        return dataset.intStream().count();
     }
 
     /** @return how many observations are odd */
     public long oddCount() {
-        return dataset.stream().filter(x -> x % 2 != 0).count();
+        return dataset.intStream().filter(x -> x % 2 != 0).count();
     }
 
     /** @return how many observations are even */
     public long evenCount() {
-        return dataset.stream().filter(x -> x % 2 == 0).count();
+        return dataset.intStream().filter(x -> x % 2 == 0).count();
     }
 
     /** @return the number of distinct observations strictly greater than five */
     public long distinctGreaterThanFiveCount() {
-        return dataset.stream().filter(x -> x > 5).distinct().count();
+        return dataset.intStream().filter(x -> x > 5).distinct().count();
     }
 
     /** @return even values in {@code (5, 50)}, ascending. */
     public Integer[] evenBetweenFiveAndFiftySorted() {
-        return dataset.stream()
+        return dataset.intStream()
                 .filter(x -> x > 5 && x < 50 && x % 2 == 0)
                 .sorted()
                 .toArray(Integer[]::new);
@@ -51,7 +52,7 @@ public final class StreamAnalyzer {
 
     /** @return the first fifty values, each transformed to {@code 3 * x^2}. */
     public Integer[] firstFiftySquaredTimesThree() {
-        return dataset.stream()
+        return dataset.intStream()
                 .map(x -> x * x * 3)
                 .limit(50)
                 .toArray(Integer[]::new);
@@ -62,7 +63,7 @@ public final class StreamAnalyzer {
      *         dropped and duplicates removed.
      */
     public Integer[] oddDoubledSortedSkippedDistinct() {
-        return dataset.stream()
+        return dataset.intStream()
                 .filter(x -> x % 2 != 0)
                 .map(x -> x * 2)
                 .sorted()

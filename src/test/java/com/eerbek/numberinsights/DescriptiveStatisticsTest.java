@@ -26,10 +26,10 @@ class DescriptiveStatisticsTest {
     void computesCoreMeasures() {
         StatisticsResult s = summaryOf(2, 4, 4, 4, 5, 5, 7, 9);
         assertEquals(8, s.count());
-        assertEquals(40, s.sum());
-        assertEquals(2, s.min());
-        assertEquals(9, s.max());
-        assertEquals(7, s.range());
+        assertEquals(40.0, s.sum(), EPS);
+        assertEquals(2.0, s.min(), EPS);
+        assertEquals(9.0, s.max(), EPS);
+        assertEquals(7.0, s.range(), EPS);
         assertEquals(5.0, s.mean(), EPS);
         assertEquals(4.0, s.variance(), EPS);
         assertEquals(2.0, s.stdDev(), EPS);
@@ -50,13 +50,13 @@ class DescriptiveStatisticsTest {
     @Test
     void identifiesTheMode() {
         StatisticsResult s = summaryOf(2, 4, 4, 4, 5, 5, 7, 9);
-        assertEquals(List.of(4), s.modes());
+        assertEquals(List.of(4.0), s.modes());
     }
 
     @Test
     void reportsMultipleModesInAscendingOrder() {
         StatisticsResult s = summaryOf(1, 1, 2, 2, 3);
-        assertEquals(List.of(1, 2), s.modes());
+        assertEquals(List.of(1.0, 2.0), s.modes());
     }
 
     @Test
@@ -141,6 +141,32 @@ class DescriptiveStatisticsTest {
         assertEquals(-1.0, s.lowerFence(), EPS);
         assertEquals(7.0, s.upperFence(), EPS);
         assertEquals(1, s.outlierCount());
+    }
+
+    @Test
+    void decimalsAreHandledExactly() {
+        StatisticsResult s = new DescriptiveStatistics(
+                Dataset.of(List.of(1.5, 2.5, 3.5))).summary();
+        assertEquals(2.5, s.mean(), EPS);
+        assertEquals(7.5, s.sum(), EPS);
+        assertEquals(1.5, s.min(), EPS);
+        assertEquals(2.5, s.median(), EPS);
+    }
+
+    @Test
+    void jarqueBeraMatchesHandComputation() {
+        // {1..5}: population moments g1 = 0, g2 = 6.8/4 - 3 = -1.3
+        // → JB = 5/6 · (0 + 1.69/4) = 0.3520833; p = exp(-JB/2) = 0.838526
+        StatisticsResult s = summaryOf(1, 2, 3, 4, 5);
+        assertEquals(0.3520833333, s.jarqueBera(), 1e-9);
+        assertEquals(Math.exp(-0.3520833333 / 2), s.jarqueBeraP(), 1e-9);
+    }
+
+    @Test
+    void outlierValuesAreListed() {
+        DescriptiveStatistics ds = new DescriptiveStatistics(
+                Dataset.of(List.of(1, 2, 3, 4, 100)));
+        assertEquals(List.of(100.0), ds.outliers());
     }
 
     @Test

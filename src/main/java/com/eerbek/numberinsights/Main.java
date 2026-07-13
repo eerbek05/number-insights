@@ -5,6 +5,7 @@ import com.eerbek.numberinsights.io.DataLoader;
 import com.eerbek.numberinsights.model.Dataset;
 import com.eerbek.numberinsights.report.ReportFormatter;
 import com.eerbek.numberinsights.stats.DescriptiveStatistics;
+import com.eerbek.numberinsights.stats.Inference;
 import com.eerbek.numberinsights.viz.Histogram;
 import com.eerbek.numberinsights.web.WebServer;
 
@@ -68,6 +69,16 @@ public final class Main {
             var stats = new DescriptiveStatistics(dataset).summary();
             System.out.println(new ReportFormatter(options.format()).format(stats));
             System.out.println();
+
+            if (options.testMean() != null) {
+                var t = Inference.oneSampleTTest(stats, options.testMean());
+                System.out.printf(java.util.Locale.ROOT,
+                        "One-sample t-test vs mu = %s%n"
+                                + "  t = %.4f, df = %.0f, p (two-sided) = %.4f%n"
+                                + "  -> the mean is%s significantly different at alpha = 0.05%n%n",
+                        options.testMean(), t.tStatistic(), t.degreesOfFreedom(), t.pValue(),
+                        t.pValue() < 0.05 ? "" : " NOT");
+            }
         }
 
         if (options.showHistogram()) {
@@ -82,6 +93,7 @@ public final class Main {
         try {
             WebServer server = new WebServer(port);
             server.start();
+            Runtime.getRuntime().addShutdownHook(new Thread(server::stop, "webserver-shutdown"));
             System.out.println("Number Insights web UI running at http://localhost:" + server.port());
             System.out.println("Press Ctrl+C to stop.");
         } catch (IOException e) {

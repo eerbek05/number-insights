@@ -6,250 +6,244 @@
 <title>Number Insights</title>
 <style>
   :root {
-    --page:           #f9f9f7;
-    --surface-1:      #fcfcfb;
-    --text-primary:   #0b0b0b;
-    --text-secondary: #52514e;
-    --text-muted:     #898781;
-    --gridline:       #e1e0d9;
-    --baseline:       #c3c2b7;
-    --border:         rgba(11, 11, 11, 0.10);
-    --series-1:       #2a78d6;   /* Dataset A */
-    --series-2:       #1baf7a;   /* Dataset B */
-    --curve-1:        #104281;   /* normal-fit curve, darker step of the blue ramp */
-    --curve-2:        #0e6b4a;   /* normal-fit curve, darker step of the aqua ramp */
-    --critical:       #d03b3b;
+    --page: #f9f9f7; --surface-1: #fcfcfb;
+    --text-primary: #0b0b0b; --text-secondary: #52514e; --text-muted: #898781;
+    --gridline: #e1e0d9; --baseline: #c3c2b7; --border: rgba(11,11,11,0.10);
+    --series-1: #2a78d6; --series-2: #1baf7a; --series-3: #eda100; --series-4: #008300;
+    --curve-1: #104281; --curve-2: #0e6b4a; --curve-3: #7a5200; --curve-4: #004d00;
+    --critical: #d03b3b;
   }
   @media (prefers-color-scheme: dark) {
     :root {
-      --page:           #0d0d0d;
-      --surface-1:      #1a1a19;
-      --text-primary:   #ffffff;
-      --text-secondary: #c3c2b7;
-      --text-muted:     #898781;
-      --gridline:       #2c2c2a;
-      --baseline:       #383835;
-      --border:         rgba(255, 255, 255, 0.10);
-      --series-1:       #3987e5;
-      --series-2:       #199e70;
-      --curve-1:        #9ec5f4;
-      --curve-2:        #7ee2b1;
-      --critical:       #e66767;
+      --page: #0d0d0d; --surface-1: #1a1a19;
+      --text-primary: #ffffff; --text-secondary: #c3c2b7; --text-muted: #898781;
+      --gridline: #2c2c2a; --baseline: #383835; --border: rgba(255,255,255,0.10);
+      --series-1: #3987e5; --series-2: #199e70; --series-3: #c98500; --series-4: #008300;
+      --curve-1: #9ec5f4; --curve-2: #7ee2b1; --curve-3: #f0cd8c; --curve-4: #79c979;
+      --critical: #e66767;
     }
   }
 
   * { box-sizing: border-box; margin: 0; }
-
-  body {
-    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
-    background: var(--page);
-    color: var(--text-primary);
-    line-height: 1.45;
-  }
-
+  body { font-family: system-ui, -apple-system, "Segoe UI", sans-serif; background: var(--page);
+         color: var(--text-primary); line-height: 1.45; }
   .wrap { max-width: 960px; margin: 0 auto; padding: 28px 20px 64px; }
 
   header h1 { font-size: 22px; font-weight: 650; }
   header p  { color: var(--text-secondary); font-size: 14px; margin-top: 2px; }
 
-  .card {
-    background: var(--surface-1);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 18px;
-    margin-top: 18px;
-  }
+  .card { background: var(--surface-1); border: 1px solid var(--border); border-radius: 10px;
+          padding: 18px; margin-top: 18px; }
   .card h2 { font-size: 14px; font-weight: 600; color: var(--text-secondary); margin-bottom: 12px; }
 
-  textarea {
-    width: 100%;
-    min-height: 96px;
-    resize: vertical;
-    font: 13px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-    color: var(--text-primary);
-    background: var(--page);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 10px 12px;
-  }
+  textarea { width: 100%; min-height: 88px; resize: vertical;
+             font: 13px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+             color: var(--text-primary); background: var(--page);
+             border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; }
   textarea:focus { outline: 2px solid var(--series-1); outline-offset: -1px; }
+  textarea.small { min-height: 60px; }
 
-  .ds-label { display: flex; align-items: center; gap: 7px; font-size: 13px; font-weight: 600;
-              color: var(--text-secondary); margin: 0 0 6px; }
-  .ds-label .swatch { width: 10px; height: 10px; border-radius: 3px; }
-  #inputBWrap { display: none; margin-top: 14px; }
-  #inputBWrap.show { display: block; }
+  .ds-block { margin-top: 14px; }
+  .ds-block:first-child { margin-top: 0; }
+  .ds-head { display: flex; align-items: center; gap: 7px; font-size: 13px; font-weight: 600;
+             color: var(--text-secondary); margin-bottom: 6px; }
+  .ds-head .swatch { width: 10px; height: 10px; border-radius: 3px; }
+  .ds-head .remove { margin-left: auto; font-size: 12px; color: var(--text-muted);
+                     cursor: pointer; background: none; border: none; padding: 2px 6px; }
+  .ds-head .remove:hover { color: var(--critical); }
+  .col-picker { display: none; gap: 8px; align-items: center; font-size: 12.5px;
+                color: var(--text-secondary); margin-top: 6px; }
+  .col-picker.show { display: flex; }
 
-  .controls { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 12px; }
-
-  button, .file-btn, select {
-    font: inherit;
-    font-size: 13px;
-    border-radius: 8px;
-    border: 1px solid var(--border);
-    background: var(--surface-1);
-    color: var(--text-primary);
-    padding: 7px 14px;
-    cursor: pointer;
-  }
+  .controls { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 14px; }
+  button, .file-btn, select, input[type="number"], input[type="text"] {
+    font: inherit; font-size: 13px; border-radius: 8px; border: 1px solid var(--border);
+    background: var(--surface-1); color: var(--text-primary); padding: 7px 12px; }
+  button, .file-btn { cursor: pointer; }
   button:hover, .file-btn:hover { border-color: var(--text-muted); }
-  button.primary {
-    background: var(--series-1);
-    border-color: var(--series-1);
-    color: #fff;
-    font-weight: 600;
-  }
+  button.primary { background: var(--series-1); border-color: var(--series-1); color: #fff; font-weight: 600; }
   button.primary:hover { filter: brightness(1.08); }
   .file-btn input { display: none; }
   label.opt { font-size: 13px; color: var(--text-secondary); display: flex; align-items: center; gap: 6px; }
+  input.mu { width: 76px; }
 
-  .error {
-    display: none;
-    margin-top: 12px;
-    padding: 10px 14px;
-    border-radius: 8px;
-    border: 1px solid var(--critical);
-    color: var(--critical);
-    font-size: 13px;
-  }
+  .error { display: none; margin-top: 12px; padding: 10px 14px; border-radius: 8px;
+           border: 1px solid var(--critical); color: var(--critical); font-size: 13px; }
   .error.show { display: block; }
 
   #results { display: none; }
   #results.show { display: block; }
 
-  /* Stat tiles */
   .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-top: 18px; }
-  .tile {
-    background: var(--surface-1);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 14px 16px;
-  }
+  .tile { background: var(--surface-1); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; }
   .tile .label { font-size: 12px; color: var(--text-secondary); }
   .tile .value { font-size: 26px; font-weight: 600; margin-top: 2px; }
-  .tile .pair  { display: flex; align-items: center; gap: 7px; font-size: 17px; font-weight: 600; margin-top: 4px; }
+  .tile .pair  { display: flex; align-items: center; gap: 7px; font-size: 16px; font-weight: 600; margin-top: 4px; }
   .tile .dot   { width: 9px; height: 9px; border-radius: 50%; flex: none; }
 
-  /* Charts */
   .chart-box { position: relative; }
   svg { display: block; width: 100%; height: auto; }
   svg text { font-family: system-ui, -apple-system, "Segoe UI", sans-serif; }
 
-  .legend { display: flex; flex-wrap: wrap; gap: 16px; align-items: center; margin: 2px 0 10px; font-size: 12.5px; color: var(--text-secondary); }
+  .legend { display: flex; flex-wrap: wrap; gap: 16px; align-items: center; margin: 2px 0 10px;
+            font-size: 12.5px; color: var(--text-secondary); }
   .legend .item { display: flex; align-items: center; gap: 6px; }
   .legend .bar-key  { width: 12px; height: 12px; border-radius: 3px 3px 0 0; }
   .legend .line-key { width: 16px; height: 0; border-top: 2px solid; }
+  .legend .dot-key  { width: 9px; height: 9px; border-radius: 50%; }
 
-  .tooltip {
-    position: absolute;
-    pointer-events: none;
-    background: var(--surface-1);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
-    padding: 7px 11px;
-    font-size: 12px;
-    opacity: 0;
-    transition: opacity 0.08s;
-    white-space: nowrap;
-    z-index: 5;
-  }
+  .tooltip { position: absolute; pointer-events: none; background: var(--surface-1);
+             border: 1px solid var(--border); border-radius: 8px;
+             box-shadow: 0 4px 14px rgba(0,0,0,0.18); padding: 7px 11px; font-size: 12px;
+             opacity: 0; transition: opacity 0.08s; white-space: nowrap; z-index: 5; }
   .tooltip.show { opacity: 1; }
   .tooltip .t-title { color: var(--text-secondary); }
   .tooltip .t-value { font-weight: 600; }
   .tooltip .t-row { display: flex; align-items: center; gap: 6px; }
   .tooltip .dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
 
-  /* Comparison verdict card */
-  .compare-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; }
-  .compare-grid .cg-label { font-size: 12px; color: var(--text-secondary); }
-  .compare-grid .cg-value { font-size: 20px; font-weight: 600; margin-top: 2px; }
+  .test-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; }
+  .test-grid .cg-label { font-size: 12px; color: var(--text-secondary); }
+  .test-grid .cg-value { font-size: 20px; font-weight: 600; margin-top: 2px; }
   .verdict { margin-top: 14px; font-size: 13.5px; color: var(--text-secondary); }
   .verdict strong { color: var(--text-primary); }
 
-  /* Table */
   table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
   th, td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--gridline); }
   th { color: var(--text-secondary); font-weight: 600; font-size: 12.5px; }
   td.num, th.num { text-align: right; }
   td.num { font-variant-numeric: tabular-nums; }
   tr:last-child td { border-bottom: none; }
+  .scroll-x { overflow-x: auto; }
 
-  .row-actions { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+  .row-actions { display: flex; justify-content: space-between; align-items: center;
+                 margin-bottom: 12px; flex-wrap: wrap; gap: 8px; }
   .row-actions h2 { margin-bottom: 0; }
+  .row-actions .buttons { display: flex; gap: 8px; flex-wrap: wrap; }
   .footnote { font-size: 12px; color: var(--text-muted); margin-top: 10px; }
+
+  details.card summary { font-size: 14px; font-weight: 600; color: var(--text-secondary); cursor: pointer; }
+  details.card[open] summary { margin-bottom: 12px; }
+  .chi-result { margin-top: 12px; }
 </style>
 </head>
 <body>
 <div class="wrap">
   <header>
     <h1>Number Insights</h1>
-    <p>Paste or upload numeric datasets to get descriptive statistics, distribution charts and two-sample comparison.</p>
+    <p>Descriptive statistics, distribution charts, normality checks and hypothesis tests — for one to four datasets.</p>
   </header>
 
-  <!-- Input -->
+  <!-- Numeric input -->
   <section class="card">
     <h2>Data input</h2>
-    <div>
-      <div class="ds-label" id="labelA"><span class="swatch" style="background: var(--series-1)"></span>Dataset A</div>
-      <textarea id="inputA" placeholder="One number per line, or comma/semicolon/tab separated — e.g.&#10;12, 47, 33&#10;58&#10;# comment lines are ignored"></textarea>
-    </div>
-    <div id="inputBWrap">
-      <div class="ds-label"><span class="swatch" style="background: var(--series-2)"></span>Dataset B</div>
-      <textarea id="inputB" placeholder="Second dataset to compare against Dataset A"></textarea>
-    </div>
+    <div id="dsBlocks"></div>
     <div class="controls">
       <button class="primary" id="analyze">Analyze</button>
-      <button id="toggleB">+ Compare with a second dataset</button>
+      <button id="addDs">+ Add dataset</button>
       <label class="file-btn">Upload .txt / .csv<input type="file" id="file" accept=".txt,.csv,text/plain,text/csv"></label>
       <button id="sample">Load sample data</button>
       <label class="opt">Bins
-        <select id="bins">
-          <option>8</option>
-          <option selected>12</option>
-          <option>16</option>
-          <option>24</option>
-        </select>
+        <select id="bins"><option>8</option><option selected>12</option><option>16</option><option>24</option></select>
       </label>
       <label class="opt"><input type="checkbox" id="normalToggle" checked> Normal curve</label>
+      <label class="opt" id="muWrap">µ₀ <input type="text" inputmode="decimal" class="mu" id="mu" placeholder="e.g. 50"></label>
+      <label class="opt" id="pairedWrap" style="display:none"><input type="checkbox" id="paired"> Paired data</label>
     </div>
     <div class="error" id="error" role="alert"></div>
   </section>
+
+  <!-- Categorical input -->
+  <details class="card">
+    <summary>Categorical data — χ² tests</summary>
+    <p style="font-size:12.5px;color:var(--text-muted);margin-bottom:8px">
+      One row of counts → goodness-of-fit against a uniform distribution.
+      Two or more rows → independence test on the contingency table.</p>
+    <textarea id="chiInput" class="small" placeholder="e.g. one row:   18 22 27 33&#10;or a table:     10, 20&#10;                20, 10"></textarea>
+    <div class="controls">
+      <button class="primary" id="chiRun">Run χ² test</button>
+    </div>
+    <div class="error" id="chiError" role="alert"></div>
+    <div class="chi-result" id="chiResult"></div>
+  </details>
 
   <!-- Results -->
   <div id="results">
     <div class="tiles" id="tiles"></div>
 
-    <section class="card" id="compareCard" style="display: none">
-      <h2>Two-sample comparison — Welch's t-test</h2>
-      <div class="compare-grid" id="compareGrid"></div>
+    <section class="card" id="oneSampleCard" style="display:none">
+      <h2>One-sample t-test</h2>
+      <div class="test-grid" id="oneSampleGrid"></div>
+      <div class="verdict" id="oneSampleVerdict"></div>
+    </section>
+
+    <section class="card" id="compareCard" style="display:none">
+      <h2 id="compareTitle">Two-sample comparison — Welch's t-test</h2>
+      <div class="test-grid" id="compareGrid"></div>
       <div class="verdict" id="verdict"></div>
       <div class="footnote">Welch's test does not assume equal variances. Cohen's d: ≈0.2 small · ≈0.5 medium · ≈0.8 large.</div>
+    </section>
+
+    <section class="card" id="pairedCard" style="display:none">
+      <h2>Paired analysis — paired t-test &amp; correlation</h2>
+      <div class="test-grid" id="pairedGrid"></div>
+      <div class="verdict" id="pairedVerdict"></div>
+    </section>
+
+    <section class="card" id="anovaCard" style="display:none">
+      <h2>One-way ANOVA</h2>
+      <div class="test-grid" id="anovaGrid"></div>
+      <div class="verdict" id="anovaVerdict"></div>
+      <div class="footnote">Tests whether all group means are equal. A small p-value says at least one group differs.</div>
+    </section>
+
+    <section class="card" id="scatterCard" style="display:none">
+      <h2>Scatter plot — A vs B with least-squares line</h2>
+      <div class="legend" id="scatterLegend"></div>
+      <div class="chart-box" id="scatterBox"><div class="tooltip" id="scatterTip"></div></div>
     </section>
 
     <section class="card">
       <h2 id="histTitle">Distribution — histogram</h2>
       <div class="legend" id="histLegend"></div>
-      <div class="chart-box" id="histBox">
-        <div class="tooltip" id="histTip"></div>
-      </div>
-      <div class="footnote" id="histNote" style="display: none">Normal curve: expected bin counts for a normal distribution with the dataset's mean and standard deviation.</div>
+      <div class="chart-box" id="histBox"><div class="tooltip" id="histTip"></div></div>
+      <div class="footnote" id="histNote" style="display:none">Normal curve: expected bin counts for a normal distribution with the dataset's mean and standard deviation.</div>
+    </section>
+
+    <section class="card">
+      <h2>Cumulative distribution — ECDF</h2>
+      <div class="legend" id="ecdfLegend"></div>
+      <div class="chart-box" id="ecdfBox"><div class="tooltip" id="ecdfTip"></div></div>
+    </section>
+
+    <section class="card">
+      <h2>Normality — Q-Q plot</h2>
+      <div class="legend" id="qqLegend"></div>
+      <div class="chart-box" id="qqBox"><div class="tooltip" id="qqTip"></div></div>
+      <div class="footnote">Standardized sample quantiles against normal quantiles. Points on the diagonal = normal; the Jarque–Bera p-value in the table quantifies it.</div>
     </section>
 
     <section class="card">
       <h2>Five-number summary — box plot</h2>
-      <div class="chart-box" id="boxBox">
-        <div class="tooltip" id="boxTip"></div>
-      </div>
+      <div class="chart-box" id="boxBox"><div class="tooltip" id="boxTip"></div></div>
+    </section>
+
+    <section class="card">
+      <h2>Frequency table</h2>
+      <div class="scroll-x"><table id="freqTable"></table></div>
     </section>
 
     <section class="card">
       <div class="row-actions">
         <h2>All statistics</h2>
-        <button id="copyJson">Copy JSON</button>
+        <div class="buttons">
+          <button id="copyZ" style="display:none">Copy z-scores</button>
+          <button id="copyJson">Copy JSON</button>
+          <button id="downloadReport">Download report</button>
+        </div>
       </div>
-      <table id="statsTable"></table>
-      <div class="footnote">Kurtosis is <em>excess</em> kurtosis (0 = normal). CI uses the normal approximation. Outliers use the Tukey 1.5·IQR fence rule.</div>
+      <div class="scroll-x"><table id="statsTable"></table></div>
+      <div class="footnote">Kurtosis is <em>excess</em> kurtosis (0 = normal). CI uses the normal approximation. Outliers use the Tukey 1.5·IQR fence rule. JB = Jarque–Bera normality test (small p ⇒ not normal).</div>
     </section>
   </div>
 </div>
@@ -259,13 +253,20 @@
 
 const $ = id => document.getElementById(id);
 const SVGNS = "http://www.w3.org/2000/svg";
+const DS_META = [
+  { key: "A", color: "--series-1", curve: "--curve-1" },
+  { key: "B", color: "--series-2", curve: "--curve-2" },
+  { key: "C", color: "--series-3", curve: "--curve-3" },
+  { key: "D", color: "--series-4", curve: "--curve-4" }
+];
+let visibleCount = 1;
 let lastResponse = null;
+let lastSets = null;
+let uploadTargetIndex = 0;
 
 /* ---------- helpers ---------- */
 
-function css(name) {
-  return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
-}
+function css(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
 
 function el(name, attrs, text) {
   const node = document.createElementNS(SVGNS, name);
@@ -286,7 +287,6 @@ function fmtP(p) {
   return fmt(p, 4);
 }
 
-/* Clean ~4-step y ticks: 1/2/5 × 10^k */
 function niceTicks(max) {
   if (max <= 0) return [0, 1];
   const rough = max / 4;
@@ -298,7 +298,6 @@ function niceTicks(max) {
   return ticks;
 }
 
-/* Column with a 4px rounded data-end (top) and a square baseline */
 function roundedTopRect(x, y, w, h, r) {
   r = Math.min(r, w / 2, h);
   return `M${x},${y + h} V${y + r} Q${x},${y} ${x + r},${y} H${x + w - r} Q${x + w},${y} ${x + w},${y + r} V${y + h} Z`;
@@ -309,66 +308,179 @@ function normalPdf(x, mean, sd) {
   return Math.exp(-0.5 * z * z) / (sd * Math.sqrt(2 * Math.PI));
 }
 
-/* ---------- input handling ---------- */
+/* Acklam's rational approximation of the inverse normal CDF (|err| < 1.15e-9). */
+function invNorm(p) {
+  const a = [-3.969683028665376e+01, 2.209460984245205e+02, -2.759285104469687e+02,
+             1.383577518672690e+02, -3.066479806614716e+01, 2.506628277459239e+00];
+  const b = [-5.447609879822406e+01, 1.615858368580409e+02, -1.556989798598866e+02,
+             6.680131188771972e+01, -1.328068155288572e+01];
+  const c = [-7.784894002430293e-03, -3.223964580411365e-01, -2.400758277161838e+00,
+             -2.549732539343734e+00, 4.374664141464968e+00, 2.938163982698783e+00];
+  const d = [7.784695709041462e-03, 3.224671290700398e-01, 2.445134137142996e+00,
+             3.754408661907416e+00];
+  const pl = 0.02425;
+  let q, r;
+  if (p < pl) {
+    q = Math.sqrt(-2 * Math.log(p));
+    return (((((c[0]*q+c[1])*q+c[2])*q+c[3])*q+c[4])*q+c[5]) / ((((d[0]*q+d[1])*q+d[2])*q+d[3])*q+1);
+  }
+  if (p <= 1 - pl) {
+    q = p - 0.5; r = q * q;
+    return (((((a[0]*r+a[1])*r+a[2])*r+a[3])*r+a[4])*r+a[5])*q /
+           (((((b[0]*r+b[1])*r+b[2])*r+b[3])*r+b[4])*r+1);
+  }
+  q = Math.sqrt(-2 * Math.log(1 - p));
+  return -(((((c[0]*q+c[1])*q+c[2])*q+c[3])*q+c[4])*q+c[5]) / ((((d[0]*q+d[1])*q+d[2])*q+d[3])*q+1);
+}
+
+function attachTooltip(box, tip, hit, buildHtml) {
+  hit.addEventListener("mouseenter", () => { tip.innerHTML = buildHtml(); tip.classList.add("show"); });
+  hit.addEventListener("mousemove", e => {
+    const r = box.getBoundingClientRect();
+    tip.style.left = Math.min(e.clientX - r.left + 14, r.width - tip.offsetWidth - 4) + "px";
+    tip.style.top = (e.clientY - r.top - 44) + "px";
+  });
+  hit.addEventListener("mouseleave", () => tip.classList.remove("show"));
+}
+
+/* ---------- dataset input blocks ---------- */
+
+function buildBlocks() {
+  const host = $("dsBlocks");
+  host.innerHTML = "";
+  for (let i = 0; i < visibleCount; i++) {
+    const meta = DS_META[i];
+    const block = document.createElement("div");
+    block.className = "ds-block";
+    block.innerHTML =
+      `<div class="ds-head"><span class="swatch" style="background: var(${meta.color})"></span>` +
+      `Dataset ${meta.key}` +
+      (i > 0 && i === visibleCount - 1 ? `<button class="remove" data-i="${i}">× remove</button>` : "") +
+      `</div>` +
+      `<textarea id="input${meta.key}" placeholder="${i === 0
+          ? "One number per line, or comma/semicolon/tab separated. Decimals welcome — e.g.\n12.5, 47, 33.2\n# comments are ignored"
+          : "Dataset " + meta.key}"></textarea>` +
+      `<div class="col-picker" id="colPicker${i}"><span>CSV columns:</span><select id="colSelect${i}"></select>` +
+      `<button id="colUse${i}">Use column</button></div>`;
+    host.appendChild(block);
+  }
+  host.querySelectorAll(".remove").forEach(btn => btn.addEventListener("click", () => {
+    visibleCount--;
+    rebuildPreserving();
+  }));
+  $("pairedWrap").style.display = visibleCount === 2 ? "" : "none";
+  $("muWrap").style.display = visibleCount === 1 ? "" : "none";
+  $("addDs").style.display = visibleCount < DS_META.length ? "" : "none";
+}
+
+function rebuildPreserving() {
+  const values = DS_META.map(m => { const t = $("input" + m.key); return t ? t.value : ""; });
+  buildBlocks();
+  for (let i = 0; i < visibleCount; i++) $("input" + DS_META[i].key).value = values[i] || "";
+}
+
+$("addDs").addEventListener("click", () => {
+  if (visibleCount < DS_META.length) { visibleCount++; rebuildPreserving(); }
+});
+
+buildBlocks();
+
+/* ---------- CSV upload with column picker ---------- */
 
 $("file").addEventListener("change", e => {
   const f = e.target.files[0];
   if (!f) return;
-  // Load into B when compare mode is open and A already has data
-  const target = ($("inputBWrap").classList.contains("show") && $("inputA").value.trim())
-      ? $("inputB") : $("inputA");
-  f.text().then(text => { target.value = text; });
+  // Target: first empty visible textarea, else the last one
+  uploadTargetIndex = 0;
+  for (let i = 0; i < visibleCount; i++) {
+    if (!$("input" + DS_META[i].key).value.trim()) { uploadTargetIndex = i; break; }
+    uploadTargetIndex = i;
+  }
+  f.text().then(text => loadFileText(text, uploadTargetIndex));
   e.target.value = "";
 });
 
-$("toggleB").addEventListener("click", () => {
-  const wrap = $("inputBWrap");
-  const showing = wrap.classList.toggle("show");
-  $("toggleB").textContent = showing ? "− Remove second dataset" : "+ Compare with a second dataset";
-  if (!showing) $("inputB").value = "";
-});
+function loadFileText(text, index) {
+  const lines = text.split(/\r?\n/).filter(l => l.trim() && !l.trim().startsWith("#"));
+  const rows = lines.map(l => l.split(/[,;\t]+|\s{2,}| /).map(t => t.trim()).filter(t => t));
+  const cols = rows.length ? Math.max(...rows.map(r => r.length)) : 0;
+
+  if (cols <= 1) { // plain single-column data
+    $("input" + DS_META[index].key).value = text;
+    $("colPicker" + index).classList.remove("show");
+    return;
+  }
+  // Multi-column: offer a picker. Header = first row with any non-numeric token.
+  const hasHeader = rows[0].some(t => Number.isNaN(Number(t)));
+  const names = hasHeader ? rows[0] : Array.from({ length: cols }, (_, i) => "Column " + (i + 1));
+  const dataRows = hasHeader ? rows.slice(1) : rows;
+
+  const select = $("colSelect" + index);
+  select.innerHTML = names.map((n, i) => `<option value="${i}">${n}</option>`).join("");
+  const picker = $("colPicker" + index);
+  picker.classList.add("show");
+  $("colUse" + index).onclick = () => {
+    const col = parseInt(select.value, 10);
+    const values = dataRows.map(r => r[col]).filter(v => v !== undefined && v !== "");
+    $("input" + DS_META[index].key).value = values.join("\n");
+    picker.classList.remove("show");
+  };
+  // Preselect the first numeric column and preview it immediately
+  $("colUse" + index).click();
+  picker.classList.add("show");
+}
+
+/* ---------- sample data ---------- */
 
 $("sample").addEventListener("click", () => {
-  // Roughly bell-shaped samples: sum of three uniform draws scaled to 0–100.
-  const draw = shift => Math.round(Math.min(100, Math.max(0,
-      (Math.random() + Math.random() + Math.random()) / 3 * 100 + shift)));
-  $("inputA").value = Array.from({ length: 400 }, () => draw(0)).join("\n");
-  if ($("inputBWrap").classList.contains("show")) {
-    $("inputB").value = Array.from({ length: 400 }, () => draw(12)).join("\n");
+  const bell = (shift, spread) => Math.round(10 * Math.min(100, Math.max(0,
+      (Math.random() + Math.random() + Math.random()) / 3 * spread + shift))) / 10;
+  const a = Array.from({ length: 400 }, () => bell(0, 100));
+  $("inputA").value = a.join("\n");
+  if (visibleCount >= 2) {
+    if ($("paired").checked && visibleCount === 2) {
+      // Correlated pairs for a meaningful scatter: B ≈ 0.75·A + 12 + noise
+      $("inputB").value = a.map(v => Math.round(10 * (0.75 * v + 12 + (Math.random() - 0.5) * 18)) / 10).join("\n");
+    } else {
+      $("inputB").value = Array.from({ length: 400 }, () => bell(12, 80)).join("\n");
+    }
   }
+  if (visibleCount >= 3) $("inputC").value = Array.from({ length: 300 }, () => bell(25, 70)).join("\n");
+  if (visibleCount >= 4) $("inputD").value = Array.from({ length: 300 }, () => bell(-8, 90)).join("\n");
 });
+
+/* ---------- analyze ---------- */
 
 $("analyze").addEventListener("click", analyze);
 $("bins").addEventListener("change", () => { if (lastResponse) analyze(); });
-$("normalToggle").addEventListener("change", () => { if (lastResponse) renderCurrent(); });
-
-$("copyJson").addEventListener("click", () => {
-  if (!lastResponse) return;
-  navigator.clipboard.writeText(JSON.stringify(lastResponse, null, 2)).then(() => {
-    $("copyJson").textContent = "Copied!";
-    setTimeout(() => { $("copyJson").textContent = "Copy JSON"; }, 1200);
-  });
-});
+$("normalToggle").addEventListener("change", () => { if (lastSets) renderCurrent(); });
+$("paired").addEventListener("change", () => { if (lastResponse) analyze(); });
 
 async function analyze() {
-  const bodyA = $("inputA").value;
-  const bodyB = $("inputBWrap").classList.contains("show") ? $("inputB").value : "";
   $("error").classList.remove("show");
-
-  if (!bodyA.trim()) {
-    return showError("Enter some data first — paste numbers or upload a file.");
+  const bodies = [];
+  for (let i = 0; i < visibleCount; i++) {
+    const v = $("input" + DS_META[i].key).value;
+    if (v.trim()) bodies.push(v);
   }
-  const comparing = bodyB.trim().length > 0;
+  if (!bodies.length) return showError("Enter some data first — paste numbers or upload a file.");
+
   const bins = encodeURIComponent($("bins").value);
+  let url, body;
+  if (bodies.length === 1) {
+    url = `/api/analyze?bins=${bins}`;
+    const mu = $("mu").value.trim();
+    if (mu) url += `&mu=${encodeURIComponent(mu)}`;
+    body = bodies[0];
+  } else {
+    url = `/api/compare?bins=${bins}`;
+    if (bodies.length === 2 && $("paired").checked) url += "&paired=1";
+    body = bodies.join("\n---\n");
+  }
 
   try {
-    const url = comparing ? `/api/compare?bins=${bins}` : `/api/analyze?bins=${bins}`;
-    const body = comparing ? bodyA + "\n---\n" + bodyB : bodyA;
-    const res = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "text/plain; charset=utf-8" },
-      body
-    });
+    const res = await fetch(url, { method: "POST",
+      headers: { "Content-Type": "text/plain; charset=utf-8" }, body });
     const data = await res.json();
     if (!res.ok) return showError(data.error || ("Request failed with status " + res.status));
     lastResponse = data;
@@ -379,30 +491,47 @@ async function analyze() {
 }
 
 function showError(message) {
-  const errBox = $("error");
-  errBox.textContent = message;
-  errBox.classList.add("show");
+  const box = $("error");
+  box.textContent = message;
+  box.classList.add("show");
   $("results").classList.remove("show");
 }
 
-/* ---------- rendering ---------- */
+/* ---------- render pipeline ---------- */
+
+function normalizeSets(data) {
+  const raw = data.sets ? data.sets : data.a ? [data.a, data.b] : [data];
+  return raw.map((r, i) => ({
+    name: raw.length === 1 ? "Dataset" : "Dataset " + DS_META[i].key,
+    shortName: DS_META[i].key,
+    color: css(DS_META[i].color),
+    curve: css(DS_META[i].curve),
+    stats: r.stats,
+    hist: r.histogram,
+    percentiles: r.percentiles,
+    outliers: r.outliers || [],
+    outliersTruncated: !!r.outliersTruncated
+  }));
+}
 
 function renderCurrent() {
   const data = lastResponse;
-  const comparing = !!data.a;
-  const sets = comparing
-      ? [{ name: "Dataset A", stats: data.a.stats, hist: data.a.histogram,
-           color: css("--series-1"), curve: css("--curve-1") },
-         { name: "Dataset B", stats: data.b.stats, hist: data.b.histogram,
-           color: css("--series-2"), curve: css("--curve-2") }]
-      : [{ name: "Dataset", stats: data.stats, hist: data.histogram,
-           color: css("--series-1"), curve: css("--curve-1") }];
+  const sets = normalizeSets(data);
+  lastSets = sets;
 
   renderTiles(sets);
-  renderComparison(comparing ? data.comparison : null);
+  renderOneSample(data.oneSampleT, data.mu);
+  renderComparison(data.comparison, sets);
+  renderPaired(data.paired);
+  renderAnova(data.anova, sets);
+  renderScatter(data.paired, sets);
   renderHistogram(sets);
+  renderEcdf(sets);
+  renderQQ(sets);
   renderBoxPlots(sets);
+  renderFrequencyTable(sets);
   renderTable(sets);
+  $("copyZ").style.display = sets.length === 1 ? "" : "none";
   $("results").classList.add("show");
 }
 
@@ -418,56 +547,123 @@ function renderTiles(sets) {
       return `<div class="tile"><div class="label">${label}</div><div class="value">${get(sets[0].stats)}</div></div>`;
     }
     const rows = sets.map(set =>
-      `<div class="pair"><span class="dot" style="background:${set.color}"></span>${get(set.stats)}</div>`
-    ).join("");
+      `<div class="pair"><span class="dot" style="background:${set.color}"></span>${get(set.stats)}</div>`).join("");
     return `<div class="tile"><div class="label">${label}</div>${rows}</div>`;
   }).join("");
 }
 
-function renderComparison(cmp) {
-  const card = $("compareCard");
-  if (!cmp) { card.style.display = "none"; return; }
-  card.style.display = "";
+function testGridCells(pairs) {
+  return pairs.map(([label, value]) =>
+    `<div><div class="cg-label">${label}</div><div class="cg-value">${value}</div></div>`).join("");
+}
 
-  const dLabel = d => {
-    const a = Math.abs(d);
-    return a >= 0.8 ? "large" : a >= 0.5 ? "medium" : a >= 0.2 ? "small" : "negligible";
-  };
-  const cells = [
+function significanceSentence(p, subject) {
+  if (p === null || p === undefined) return "";
+  const significant = p < 0.05;
+  return `At α = 0.05 ${subject} is <strong>${significant ? "statistically significant" : "not statistically significant"}</strong> (p ${p < 0.001 ? "" : "= "}${fmtP(p)}).`;
+}
+
+function renderOneSample(t, mu) {
+  const card = $("oneSampleCard");
+  if (!t) { card.style.display = "none"; return; }
+  card.style.display = "";
+  $("oneSampleGrid").innerHTML = testGridCells([
+    ["µ₀ (hypothesised mean)", fmt(mu, 4)],
+    ["Mean − µ₀", fmt(t.meanDifference, 4)],
+    ["t statistic", fmt(t.tStatistic, 3)],
+    ["df", fmt(t.degreesOfFreedom, 0)],
+    ["p-value (two-sided)", fmtP(t.pValue)]
+  ]);
+  $("oneSampleVerdict").innerHTML = significanceSentence(t.pValue, "the difference from µ₀");
+}
+
+function renderComparison(cmp, sets) {
+  const card = $("compareCard");
+  if (!cmp || sets.length !== 2) { card.style.display = "none"; return; }
+  card.style.display = "";
+  const dLabel = d => { const a = Math.abs(d); return a >= 0.8 ? "large" : a >= 0.5 ? "medium" : a >= 0.2 ? "small" : "negligible"; };
+  $("compareGrid").innerHTML = testGridCells([
     ["Mean difference (A − B)", fmt(cmp.meanDifference, 3)],
     ["Cohen's d", cmp.cohensD === null ? "n/a" : `${fmt(cmp.cohensD, 3)} (${dLabel(cmp.cohensD)})`],
     ["Welch's t", fmt(cmp.tStatistic, 3)],
     ["df", fmt(cmp.degreesOfFreedom, 1)],
     ["p-value (two-sided)", fmtP(cmp.pValue)]
-  ];
-  $("compareGrid").innerHTML = cells.map(([label, value]) =>
-    `<div><div class="cg-label">${label}</div><div class="cg-value">${value}</div></div>`
-  ).join("");
+  ]);
+  $("verdict").innerHTML = significanceSentence(cmp.pValue, "the difference in means");
+}
 
-  const significant = cmp.pValue !== null && cmp.pValue < 0.05;
-  $("verdict").innerHTML = significant
-      ? `At α = 0.05 the difference in means is <strong>statistically significant</strong> (p ${fmtP(cmp.pValue)}).`
-      : `At α = 0.05 the difference in means is <strong>not statistically significant</strong> (p = ${fmtP(cmp.pValue)}).`;
+function renderPaired(paired) {
+  const card = $("pairedCard");
+  if (!paired) { card.style.display = "none"; return; }
+  card.style.display = "";
+  if (paired.error) {
+    $("pairedGrid").innerHTML = "";
+    $("pairedVerdict").innerHTML = `<span style="color:var(--critical)">${paired.error}</span>`;
+    return;
+  }
+  const cells = [];
+  if (paired.tTest) {
+    cells.push(["Mean of differences", fmt(paired.tTest.meanDifference, 4)],
+               ["Paired t", fmt(paired.tTest.tStatistic, 3)],
+               ["df", fmt(paired.tTest.degreesOfFreedom, 0)],
+               ["p-value (two-sided)", fmtP(paired.tTest.pValue)]);
+  }
+  if (paired.bivariate) {
+    cells.push(["Pearson r", `${fmt(paired.bivariate.pearsonR, 4)} (p ${fmtP(paired.bivariate.pearsonP)})`],
+               ["Spearman ρ", fmt(paired.bivariate.spearmanRho, 4)],
+               ["R²", fmt(paired.bivariate.rSquared, 4)]);
+  }
+  $("pairedGrid").innerHTML = testGridCells(cells);
+  $("pairedVerdict").innerHTML = paired.tTest
+      ? significanceSentence(paired.tTest.pValue, "the mean pairwise difference") : "";
+}
+
+function renderAnova(anova, sets) {
+  const card = $("anovaCard");
+  if (!anova || sets.length < 3) { card.style.display = "none"; return; }
+  card.style.display = "";
+  const means = anova.groupMeans.map((m, i) =>
+      `<span style="white-space:nowrap"><span class="dot" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${sets[i].color}"></span> ${fmt(m)}</span>`)
+      .join(" · ");
+  $("anovaGrid").innerHTML = testGridCells([
+    ["F statistic", fmt(anova.fStatistic, 3)],
+    ["df (between, within)", `${anova.dfBetween}, ${anova.dfWithin}`],
+    ["p-value", fmtP(anova.pValue)],
+    ["Grand mean", fmt(anova.grandMean, 3)]
+  ]);
+  $("anovaVerdict").innerHTML =
+      significanceSentence(anova.pValue, "the difference between group means")
+      + `<div style="margin-top:6px">Group means: ${means}</div>`;
+}
+
+/* ---------- charts ---------- */
+
+const CHART_W = 860;
+
+function chartFrame(svg, pad, plotW, plotH, ticks, y, fmtTick) {
+  for (const t of ticks) {
+    svg.append(el("line", { x1: pad.left, x2: pad.left + plotW, y1: y(t), y2: y(t),
+      stroke: css("--gridline"), "stroke-width": 1 }));
+    svg.append(el("text", { x: pad.left - 8, y: y(t) + 4, "text-anchor": "end", "font-size": 11,
+      fill: css("--text-muted"), style: "font-variant-numeric: tabular-nums" }, fmtTick(t)));
+  }
 }
 
 function renderHistogram(sets) {
-  const W = 860, H = 300;
+  const W = CHART_W, H = 300;
   const pad = { top: 16, right: 12, bottom: 34, left: 46 };
-  const plotW = W - pad.left - pad.right;
-  const plotH = H - pad.top - pad.bottom;
+  const plotW = W - pad.left - pad.right, plotH = H - pad.top - pad.bottom;
   const showCurve = $("normalToggle").checked;
   const surface = css("--surface-1");
 
   const box = $("histBox");
   box.querySelector("svg")?.remove();
-  const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, role: "img",
-    "aria-label": "Histogram of the dataset distribution" });
+  const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": "Histogram" });
 
-  const bins = sets[0].hist;            // compare mode: bins are server-aligned
+  const bins = sets[0].hist;
   const nBins = bins.length;
   const binWidth = bins[0].high - bins[0].low || 1;
 
-  // y scale covers the tallest bar of every set AND the tallest normal-fit peak
   let yPeak = Math.max(...sets.flatMap(s => s.hist.map(b => b.count)));
   if (showCurve) {
     for (const s of sets) {
@@ -479,18 +675,9 @@ function renderHistogram(sets) {
   const ticks = niceTicks(yPeak);
   const yMax = ticks[ticks.length - 1];
   const y = v => pad.top + plotH - (v / yMax) * plotH;
+  chartFrame(svg, pad, plotW, plotH, ticks, y, fmt);
 
-  // Hairline gridlines + y tick labels (muted ink, never data color)
-  for (const t of ticks) {
-    svg.append(el("line", { x1: pad.left, x2: W - pad.right, y1: y(t), y2: y(t),
-      stroke: css("--gridline"), "stroke-width": 1 }));
-    svg.append(el("text", { x: pad.left - 8, y: y(t) + 4, "text-anchor": "end",
-      "font-size": 11, fill: css("--text-muted"), style: "font-variant-numeric: tabular-nums" }, fmt(t)));
-  }
-
-  // Bars: one group per bin; ≤24px thick, 2px surface gap between neighbours
-  const slot = plotW / nBins;
-  const groupGap = 2;
+  const slot = plotW / nBins, groupGap = 2;
   const barW = Math.min(24, (slot - groupGap * (sets.length + 1)) / sets.length);
   const groupW = barW * sets.length + groupGap * (sets.length - 1);
   const tip = $("histTip");
@@ -498,77 +685,54 @@ function renderHistogram(sets) {
 
   for (let i = 0; i < nBins; i++) {
     const x0 = pad.left + i * slot + (slot - groupW) / 2;
-    const paths = sets.map((set, k) => {
+    barPaths.push(sets.map((set, k) => {
       const count = set.hist[i].count;
-      const barH = (count / yMax) * plotH;
       const path = el("path", {
-        d: roundedTopRect(x0 + k * (barW + groupGap), y(count), barW, Math.max(barH, 0.5), 4),
-        fill: set.color
-      });
+        d: roundedTopRect(x0 + k * (barW + groupGap), y(count), barW, Math.max((count / yMax) * plotH, 0.5), 4),
+        fill: set.color });
       svg.append(path);
       return path;
-    });
-    barPaths.push(paths);
+    }));
   }
 
-  // Normal-fit curves: 2px line over a 4px surface halo so they read over bars
   if (showCurve) {
-    const domainLow = bins[0].low;
-    const domainHigh = bins[nBins - 1].high;
-    const xOf = v => pad.left + ((v - domainLow) / (domainHigh - domainLow || 1)) * plotW;
+    const lo = bins[0].low, hi = bins[nBins - 1].high;
+    const xOf = v => pad.left + ((v - lo) / (hi - lo || 1)) * plotW;
     for (const set of sets) {
       const sd = set.stats.sampleStdDev;
       if (!(sd > 0)) continue;
       const pts = [];
       for (let i = 0; i <= 120; i++) {
-        const v = domainLow + (i / 120) * (domainHigh - domainLow);
-        const expected = set.stats.count * binWidth * normalPdf(v, set.stats.mean, sd);
-        pts.push(`${xOf(v).toFixed(1)},${Math.max(y(expected), pad.top).toFixed(1)}`);
+        const v = lo + (i / 120) * (hi - lo);
+        pts.push(`${xOf(v).toFixed(1)},${Math.max(y(set.stats.count * binWidth * normalPdf(v, set.stats.mean, sd)), pad.top).toFixed(1)}`);
       }
-      svg.append(el("polyline", { points: pts.join(" "), fill: "none",
-        stroke: surface, "stroke-width": 4, "stroke-linejoin": "round" }));
-      svg.append(el("polyline", { points: pts.join(" "), fill: "none",
-        stroke: set.curve, "stroke-width": 2, "stroke-linejoin": "round" }));
+      svg.append(el("polyline", { points: pts.join(" "), fill: "none", stroke: surface, "stroke-width": 4, "stroke-linejoin": "round" }));
+      svg.append(el("polyline", { points: pts.join(" "), fill: "none", stroke: set.curve, "stroke-width": 2, "stroke-linejoin": "round" }));
     }
   }
 
-  // Hover targets: full slot height, tooltip lists every visible series
   for (let i = 0; i < nBins; i++) {
-    const hit = el("rect", { x: pad.left + i * slot, y: pad.top, width: slot, height: plotH,
-      fill: "transparent" });
-    hit.addEventListener("mouseenter", () => {
-      barPaths[i].forEach(p => p.setAttribute("opacity", "0.75"));
+    const hit = el("rect", { x: pad.left + i * slot, y: pad.top, width: slot, height: plotH, fill: "transparent" });
+    hit.addEventListener("mouseenter", () => barPaths[i].forEach(p => p.setAttribute("opacity", "0.75")));
+    hit.addEventListener("mouseleave", () => barPaths[i].forEach(p => p.removeAttribute("opacity")));
+    attachTooltip(box, tip, hit, () => {
       const rows = sets.map(set => {
         const c = set.hist[i].count;
         const pct = set.stats.count ? (c / set.stats.count * 100).toFixed(1) : "0";
-        return `<div class="t-row"><span class="dot" style="background:${set.color}"></span>` +
-               `<span class="t-value">${fmt(c)}</span>&nbsp;· ${pct}%</div>`;
+        return `<div class="t-row"><span class="dot" style="background:${set.color}"></span><span class="t-value">${fmt(c)}</span>&nbsp;· ${pct}%</div>`;
       }).join("");
-      tip.innerHTML = `<div class="t-title">${fmt(bins[i].low, 1)} – ${fmt(bins[i].high, 1)}</div>` + rows;
-      tip.classList.add("show");
-    });
-    hit.addEventListener("mousemove", e => {
-      const r = box.getBoundingClientRect();
-      tip.style.left = Math.min(e.clientX - r.left + 14, r.width - tip.offsetWidth - 4) + "px";
-      tip.style.top = (e.clientY - r.top - 44) + "px";
-    });
-    hit.addEventListener("mouseleave", () => {
-      barPaths[i].forEach(p => p.removeAttribute("opacity"));
-      tip.classList.remove("show");
+      return `<div class="t-title">${fmt(bins[i].low, 1)} – ${fmt(bins[i].high, 1)}</div>` + rows;
     });
     svg.append(hit);
   }
 
-  // X labels on bin edges, thinned so they never collide
   const every = Math.ceil(nBins / 6);
   for (let i = 0; i < nBins; i += every) {
-    svg.append(el("text", { x: pad.left + i * slot, y: H - 12, "text-anchor": "middle",
-      "font-size": 11, fill: css("--text-muted") }, fmt(bins[i].low, 0)));
+    svg.append(el("text", { x: pad.left + i * slot, y: H - 12, "text-anchor": "middle", "font-size": 11,
+      fill: css("--text-muted") }, fmt(bins[i].low, 0)));
   }
-  svg.append(el("text", { x: pad.left + plotW, y: H - 12, "text-anchor": "end",
-    "font-size": 11, fill: css("--text-muted") }, fmt(bins[nBins - 1].high, 0)));
-
-  // Baseline (axis) above the bars' feet
+  svg.append(el("text", { x: pad.left + plotW, y: H - 12, "text-anchor": "end", "font-size": 11,
+    fill: css("--text-muted") }, fmt(bins[nBins - 1].high, 0)));
   svg.append(el("line", { x1: pad.left, x2: W - pad.right, y1: y(0), y2: y(0),
     stroke: css("--baseline"), "stroke-width": 1 }));
 
@@ -576,12 +740,9 @@ function renderHistogram(sets) {
   $("histTitle").textContent = `Distribution — histogram (${nBins} bins)`;
   $("histNote").style.display = showCurve ? "" : "none";
 
-  // Legend: present whenever more than one visual series is on the plot
   const items = [];
   if (sets.length > 1) {
-    for (const set of sets) {
-      items.push(`<span class="item"><span class="bar-key" style="background:${set.color}"></span>${set.name}</span>`);
-    }
+    for (const set of sets) items.push(`<span class="item"><span class="bar-key" style="background:${set.color}"></span>${set.name}</span>`);
     if (showCurve) items.push(`<span class="item"><span class="line-key" style="border-color:${css("--text-muted")}"></span>Normal fit (per dataset)</span>`);
   } else if (showCurve) {
     items.push(`<span class="item"><span class="bar-key" style="background:${sets[0].color}"></span>Observed</span>`);
@@ -590,18 +751,204 @@ function renderHistogram(sets) {
   $("histLegend").innerHTML = items.join("");
 }
 
+function renderScatter(paired, sets) {
+  const card = $("scatterCard");
+  if (!paired || !paired.pairs || !paired.pairs.length || sets.length !== 2) {
+    card.style.display = "none"; return;
+  }
+  card.style.display = "";
+  const W = CHART_W, H = 360;
+  const pad = { top: 16, right: 16, bottom: 40, left: 52 };
+  const plotW = W - pad.left - pad.right, plotH = H - pad.top - pad.bottom;
+
+  const box = $("scatterBox");
+  box.querySelector("svg")?.remove();
+  const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": "Scatter plot with regression line" });
+
+  const xs = paired.pairs.map(p => p[0]), ys = paired.pairs.map(p => p[1]);
+  const xLo = Math.min(...xs), xHi = Math.max(...xs);
+  const yLo = Math.min(...ys), yHi = Math.max(...ys);
+  const xPadding = (xHi - xLo || 1) * 0.04, yPadding = (yHi - yLo || 1) * 0.06;
+  const x = v => pad.left + ((v - xLo + xPadding) / ((xHi - xLo) + 2 * xPadding || 1)) * plotW;
+  const y = v => pad.top + plotH - ((v - yLo + yPadding) / ((yHi - yLo) + 2 * yPadding || 1)) * plotH;
+
+  // Recessive frame: 4 horizontal gridlines with y tick labels
+  const yTicks = 4;
+  for (let i = 0; i <= yTicks; i++) {
+    const v = yLo + (i / yTicks) * (yHi - yLo || 1);
+    svg.append(el("line", { x1: pad.left, x2: pad.left + plotW, y1: y(v), y2: y(v), stroke: css("--gridline"), "stroke-width": 1 }));
+    svg.append(el("text", { x: pad.left - 8, y: y(v) + 4, "text-anchor": "end", "font-size": 11, fill: css("--text-muted") }, fmt(v, 1)));
+  }
+  for (let i = 0; i <= 5; i++) {
+    const v = xLo + (i / 5) * (xHi - xLo || 1);
+    svg.append(el("text", { x: x(v), y: H - 14, "text-anchor": "middle", "font-size": 11, fill: css("--text-muted") }, fmt(v, 1)));
+  }
+  svg.append(el("text", { x: pad.left + plotW / 2, y: H - 1, "text-anchor": "middle", "font-size": 11, fill: css("--text-secondary") }, "Dataset A"));
+  svg.append(el("text", { x: 12, y: pad.top + plotH / 2, "font-size": 11, fill: css("--text-secondary"),
+    transform: `rotate(-90 12 ${pad.top + plotH / 2})`, "text-anchor": "middle" }, "Dataset B"));
+
+  // Regression line across the visible x range
+  if (paired.bivariate) {
+    const { slope, intercept } = paired.bivariate;
+    const x1v = xLo - xPadding, x2v = xHi + xPadding;
+    svg.append(el("line", { x1: x(x1v), y1: y(slope * x1v + intercept), x2: x(x2v), y2: y(slope * x2v + intercept),
+      stroke: css("--curve-1"), "stroke-width": 2 }));
+  }
+
+  // Points: ≥8px markers with a surface ring
+  const tip = $("scatterTip");
+  const surface = css("--surface-1");
+  paired.pairs.forEach(p => {
+    svg.append(el("circle", { cx: x(p[0]), cy: y(p[1]), r: 5, fill: sets[0].color,
+      stroke: surface, "stroke-width": 1.5, "fill-opacity": 0.85 }));
+  });
+  // One hover layer: nearest-point tooltip
+  const hit = el("rect", { x: pad.left, y: pad.top, width: plotW, height: plotH, fill: "transparent" });
+  let nearest = null;
+  hit.addEventListener("mousemove", e => {
+    const rect = box.getBoundingClientRect();
+    const scale = W / rect.width;
+    const mx = (e.clientX - rect.left) * scale, my = (e.clientY - rect.top) * scale;
+    let best = null, bestD = 1e18;
+    for (const p of paired.pairs) {
+      const dx = x(p[0]) - mx, dy = y(p[1]) - my, d = dx * dx + dy * dy;
+      if (d < bestD) { bestD = d; best = p; }
+    }
+    nearest = bestD < 400 ? best : null;
+    if (nearest) {
+      tip.innerHTML = `<div class="t-title">(A, B)</div><div class="t-value">${fmt(nearest[0])}, ${fmt(nearest[1])}</div>`;
+      tip.classList.add("show");
+      tip.style.left = Math.min(mx / scale + 14, rect.width - tip.offsetWidth - 4) + "px";
+      tip.style.top = (my / scale - 44) + "px";
+    } else {
+      tip.classList.remove("show");
+    }
+  });
+  hit.addEventListener("mouseleave", () => tip.classList.remove("show"));
+  svg.append(hit);
+
+  box.append(svg);
+  const legend = [`<span class="item"><span class="dot-key" style="background:${sets[0].color}"></span>Pairs (n = ${paired.pairs.length}${paired.pairsTruncated ? ", first 2000 shown" : ""})</span>`];
+  if (paired.bivariate) {
+    legend.push(`<span class="item"><span class="line-key" style="border-color:${css("--curve-1")}"></span>ŷ = ${fmt(paired.bivariate.slope, 3)}·x + ${fmt(paired.bivariate.intercept, 3)}</span>`);
+  }
+  $("scatterLegend").innerHTML = legend.join("");
+}
+
+function renderEcdf(sets) {
+  const W = CHART_W, H = 280;
+  const pad = { top: 16, right: 16, bottom: 34, left: 46 };
+  const plotW = W - pad.left - pad.right, plotH = H - pad.top - pad.bottom;
+
+  const box = $("ecdfBox");
+  box.querySelector("svg")?.remove();
+  const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": "Empirical cumulative distribution" });
+
+  const lo = Math.min(...sets.map(s => s.percentiles[0]));
+  const hi = Math.max(...sets.map(s => s.percentiles[100]));
+  const x = v => pad.left + ((v - lo) / (hi - lo || 1)) * plotW;
+  const y = p => pad.top + plotH - p * plotH; // p in [0,1]
+
+  for (const p of [0, 0.25, 0.5, 0.75, 1]) {
+    svg.append(el("line", { x1: pad.left, x2: pad.left + plotW, y1: y(p), y2: y(p), stroke: css("--gridline"), "stroke-width": 1 }));
+    svg.append(el("text", { x: pad.left - 8, y: y(p) + 4, "text-anchor": "end", "font-size": 11, fill: css("--text-muted") }, (p * 100) + "%"));
+  }
+  for (let i = 0; i <= 5; i++) {
+    const v = lo + (i / 5) * (hi - lo || 1);
+    svg.append(el("text", { x: x(v), y: H - 12, "text-anchor": "middle", "font-size": 11, fill: css("--text-muted") }, fmt(v, 1)));
+  }
+
+  for (const set of sets) {
+    const pts = set.percentiles.map((v, i) => `${x(v).toFixed(1)},${y(i / 100).toFixed(1)}`);
+    svg.append(el("polyline", { points: pts.join(" "), fill: "none", stroke: set.color,
+      "stroke-width": 2, "stroke-linejoin": "round" }));
+  }
+
+  // Crosshair tooltip: cumulative % of each dataset at the hovered value
+  const tip = $("ecdfTip");
+  const hit = el("rect", { x: pad.left, y: pad.top, width: plotW, height: plotH, fill: "transparent" });
+  hit.addEventListener("mousemove", e => {
+    const rect = box.getBoundingClientRect();
+    const scale = W / rect.width;
+    const mx = (e.clientX - rect.left) * scale;
+    const value = lo + ((mx - pad.left) / plotW) * (hi - lo);
+    const rows = sets.map(set => {
+      let pct = 100;
+      if (value < set.percentiles[0]) pct = 0;
+      else { for (let i = 0; i <= 100; i++) if (set.percentiles[i] >= value) { pct = i; break; } }
+      return `<div class="t-row"><span class="dot" style="background:${set.color}"></span><span class="t-value">${pct}%</span></div>`;
+    }).join("");
+    tip.innerHTML = `<div class="t-title">≤ ${fmt(value, 2)}</div>` + rows;
+    tip.classList.add("show");
+    tip.style.left = Math.min(mx / scale + 14, rect.width - tip.offsetWidth - 4) + "px";
+    tip.style.top = ((e.clientY - rect.top) - 44) + "px";
+  });
+  hit.addEventListener("mouseleave", () => tip.classList.remove("show"));
+  svg.append(hit);
+
+  box.append(svg);
+  $("ecdfLegend").innerHTML = sets.length > 1
+      ? sets.map(set => `<span class="item"><span class="line-key" style="border-color:${set.color}"></span>${set.name}</span>`).join("")
+      : "";
+}
+
+function renderQQ(sets) {
+  const W = CHART_W, H = 320;
+  const pad = { top: 16, right: 16, bottom: 40, left: 52 };
+  const plotW = W - pad.left - pad.right, plotH = H - pad.top - pad.bottom;
+
+  const box = $("qqBox");
+  box.querySelector("svg")?.remove();
+  const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": "Normal Q-Q plot" });
+
+  const zMax = 2.6; // covers percentiles 1..99 (z ≈ ±2.33) with margin
+  const x = z => pad.left + ((z + zMax) / (2 * zMax)) * plotW;
+  const y = z => pad.top + plotH - ((z + zMax) / (2 * zMax)) * plotH;
+
+  for (const z of [-2, -1, 0, 1, 2]) {
+    svg.append(el("line", { x1: pad.left, x2: pad.left + plotW, y1: y(z), y2: y(z), stroke: css("--gridline"), "stroke-width": 1 }));
+    svg.append(el("text", { x: pad.left - 8, y: y(z) + 4, "text-anchor": "end", "font-size": 11, fill: css("--text-muted") }, String(z)));
+    svg.append(el("text", { x: x(z), y: H - 14, "text-anchor": "middle", "font-size": 11, fill: css("--text-muted") }, String(z)));
+  }
+  svg.append(el("text", { x: pad.left + plotW / 2, y: H - 1, "text-anchor": "middle", "font-size": 11, fill: css("--text-secondary") }, "Theoretical normal quantile (z)"));
+  svg.append(el("text", { x: 12, y: pad.top + plotH / 2, "font-size": 11, fill: css("--text-secondary"),
+    transform: `rotate(-90 12 ${pad.top + plotH / 2})`, "text-anchor": "middle" }, "Standardized sample quantile"));
+
+  // Reference diagonal: a perfectly normal sample lies on y = x
+  svg.append(el("line", { x1: x(-zMax), y1: y(-zMax), x2: x(zMax), y2: y(zMax),
+    stroke: css("--baseline"), "stroke-width": 1.5 }));
+
+  const surface = css("--surface-1");
+  for (const set of sets) {
+    const mean = set.stats.mean, sd = set.stats.sampleStdDev;
+    if (!(sd > 0)) continue;
+    for (let i = 1; i <= 99; i += 2) {
+      const zTheo = invNorm(i / 100);
+      const zSample = (set.percentiles[i] - mean) / sd;
+      if (Math.abs(zSample) > zMax) continue;
+      svg.append(el("circle", { cx: x(zTheo), cy: y(zSample), r: 4, fill: set.color,
+        stroke: surface, "stroke-width": 1.5, "fill-opacity": 0.85 }));
+    }
+  }
+  box.append(svg);
+
+  const items = sets.length > 1
+      ? sets.map(set => `<span class="item"><span class="dot-key" style="background:${set.color}"></span>${set.name}</span>`)
+      : [];
+  items.push(`<span class="item"><span class="line-key" style="border-color:${css("--baseline")}"></span>Perfect normal</span>`);
+  $("qqLegend").innerHTML = items.join("");
+}
+
 function renderBoxPlots(sets) {
   const rowH = 96;
-  const W = 860, H = 40 + rowH * sets.length;
+  const W = CHART_W, H = 40 + rowH * sets.length;
   const pad = { left: 60, right: 46 };
   const plotW = W - pad.left - pad.right;
 
   const box = $("boxBox");
   box.querySelector("svg")?.remove();
-  const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, role: "img",
-    "aria-label": "Box plots of the five-number summaries" });
+  const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": "Box plots" });
 
-  // Shared x scale across every dataset so positions are comparable
   const lo = Math.min(...sets.map(s => s.stats.min));
   const hi = Math.max(...sets.map(s => s.stats.max));
   const span = hi - lo || 1;
@@ -611,16 +958,13 @@ function renderBoxPlots(sets) {
 
   sets.forEach((set, k) => {
     const s = set.stats;
-    const midY = 46 + k * rowH;
-    const boxH = 34;
-    const color = set.color;
+    const midY = 46 + k * rowH, boxH = 34, color = set.color;
 
     if (sets.length > 1) {
       svg.append(el("circle", { cx: 22, cy: midY, r: 4.5, fill: color }));
       svg.append(el("text", { x: 32, y: midY + 4, "font-size": 12, "font-weight": 600,
-        fill: css("--text-secondary") }, set.name.replace("Dataset ", "")));
+        fill: css("--text-secondary") }, set.shortName));
     }
-
     for (const [a, b] of [[s.min, s.q1], [s.q3, s.max]]) {
       svg.append(el("line", { x1: x(a), x2: x(b), y1: midY, y2: midY, stroke: color, "stroke-width": 2 }));
     }
@@ -632,40 +976,59 @@ function renderBoxPlots(sets) {
     svg.append(el("line", { x1: x(s.median), x2: x(s.median), y1: midY - boxH / 2, y2: midY + boxH / 2,
       stroke: color, "stroke-width": 2 }));
 
-    // Selective direct labels: the five summary numbers, muted ink
-    const labels = [
-      [s.min, "Min", midY + 30], [s.q1, "Q1", midY + 30], [s.median, "Med", midY - 27],
-      [s.q3, "Q3", midY + 30], [s.max, "Max", midY + 30]
-    ];
-    for (const [v, name, ly] of labels) {
-      svg.append(el("text", { x: x(v), y: ly, "text-anchor": "middle", "font-size": 11,
-        fill: muted }, `${name} ${fmt(v)}`));
+    for (const [v, name, ly] of [[s.min, "Min", midY + 30], [s.q1, "Q1", midY + 30],
+        [s.median, "Med", midY - 27], [s.q3, "Q3", midY + 30], [s.max, "Max", midY + 30]]) {
+      svg.append(el("text", { x: x(v), y: ly, "text-anchor": "middle", "font-size": 11, fill: muted }, `${name} ${fmt(v)}`));
     }
 
     const hit = el("rect", { x: pad.left, y: midY - boxH, width: plotW, height: boxH * 2, fill: "transparent" });
-    hit.addEventListener("mouseenter", () => {
-      tip.innerHTML = `<div class="t-title">${set.name} — IQR (Q3 − Q1)</div><div class="t-value">${fmt(s.iqr)}</div>`;
-      tip.classList.add("show");
-    });
-    hit.addEventListener("mousemove", e => {
-      const r = box.getBoundingClientRect();
-      tip.style.left = Math.min(e.clientX - r.left + 14, r.width - tip.offsetWidth - 4) + "px";
-      tip.style.top = (e.clientY - r.top - 40) + "px";
-    });
-    hit.addEventListener("mouseleave", () => tip.classList.remove("show"));
+    attachTooltip(box, tip, hit, () =>
+        `<div class="t-title">${set.name} — IQR (Q3 − Q1)</div><div class="t-value">${fmt(s.iqr)}</div>`);
     svg.append(hit);
   });
-
   box.append(svg);
 }
 
+function renderFrequencyTable(sets) {
+  const bins = sets[0].hist;
+  let html;
+  if (sets.length === 1) {
+    const total = sets[0].stats.count;
+    let cum = 0;
+    html = "<tr><th>Interval</th><th class=\"num\">f</th><th class=\"num\">%</th>" +
+           "<th class=\"num\">Cumulative f</th><th class=\"num\">Cumulative %</th></tr>" +
+        bins.map(b => {
+          cum += b.count;
+          return `<tr><td>${fmt(b.low, 1)} – ${fmt(b.high, 1)}</td><td class="num">${fmt(b.count)}</td>` +
+                 `<td class="num">${(b.count / total * 100).toFixed(1)}</td>` +
+                 `<td class="num">${fmt(cum)}</td><td class="num">${(cum / total * 100).toFixed(1)}</td></tr>`;
+        }).join("");
+  } else {
+    html = "<tr><th>Interval</th>" + sets.map(s =>
+        `<th class="num">f (${s.shortName})</th><th class="num">% (${s.shortName})</th>`).join("") + "</tr>" +
+        bins.map((b, i) =>
+          `<tr><td>${fmt(b.low, 1)} – ${fmt(b.high, 1)}</td>` + sets.map(s => {
+            const c = s.hist[i].count;
+            return `<td class="num">${fmt(c)}</td><td class="num">${(c / s.stats.count * 100).toFixed(1)}</td>`;
+          }).join("") + "</tr>").join("");
+  }
+  $("freqTable").innerHTML = html;
+}
+
 function renderTable(sets) {
+  const outlierText = set => {
+    const s = set.stats;
+    if (!s.outlierCount) return "0";
+    const shown = set.outliers.slice(0, 12).map(v => fmt(v)).join(", ");
+    const more = s.outlierCount > 12 ? ` … (+${s.outlierCount - 12})` : (set.outliersTruncated ? " …" : "");
+    return `${fmt(s.outlierCount)}: ${shown}${more}`;
+  };
   const rows = [
     ["Count", s => fmt(s.count), "count"],
-    ["Sum", s => fmt(s.sum), "sum"],
-    ["Min", s => fmt(s.min), "min"],
-    ["Max", s => fmt(s.max), "max"],
-    ["Range", s => fmt(s.range), "range"],
+    ["Sum", s => fmt(s.sum, 4), "sum"],
+    ["Min", s => fmt(s.min, 4), "min"],
+    ["Max", s => fmt(s.max, 4), "max"],
+    ["Range", s => fmt(s.range, 4), "range"],
     ["Mean", s => fmt(s.mean, 4), "mean"],
     ["Median", s => fmt(s.median, 4), "median"],
     ["Mode(s)", s => s.modes.map(m => fmt(m)).join(", "), null],
@@ -675,6 +1038,7 @@ function renderTable(sets) {
     ["Std dev (sample)", s => fmt(s.sampleStdDev, 4), "sampleStdDev"],
     ["Skewness", s => fmt(s.skewness, 4), "skewness"],
     ["Excess kurtosis", s => fmt(s.excessKurtosis, 4), "excessKurtosis"],
+    ["Jarque–Bera (normality)", s => `${fmt(s.jarqueBera, 3)} (p ${fmtP(s.jarqueBeraP)})`, null],
     ["Coefficient of variation", s => fmt(s.coefficientOfVariation, 4), "coefficientOfVariation"],
     ["Standard error", s => fmt(s.standardError, 4), "standardError"],
     ["95% CI of the mean", s => `[${fmt(s.ci95Low, 3)}, ${fmt(s.ci95High, 3)}]`, null],
@@ -684,28 +1048,116 @@ function renderTable(sets) {
     ["P95", s => fmt(s.p95, 4), "p95"],
     ["IQR", s => fmt(s.iqr, 4), "iqr"],
     ["Tukey fences", s => `[${fmt(s.lowerFence, 2)}, ${fmt(s.upperFence, 2)}]`, null],
-    ["Outliers", s => fmt(s.outlierCount), "outlierCount"]
+    ["Outliers", (s, set) => outlierText(set), null]
   ];
 
   let html;
   if (sets.length === 1) {
     html = "<tr><th>Measure</th><th class=\"num\">Value</th></tr>" +
-        rows.map(([label, get]) =>
-            `<tr><td>${label}</td><td class="num">${get(sets[0].stats)}</td></tr>`).join("");
+        rows.map(([label, get]) => `<tr><td>${label}</td><td class="num">${get(sets[0].stats, sets[0])}</td></tr>`).join("");
   } else {
-    html = "<tr><th>Measure</th><th class=\"num\">A</th><th class=\"num\">B</th><th class=\"num\">Δ (A − B)</th></tr>" +
+    const heads = sets.map(s => `<th class="num">${s.shortName}</th>`).join("");
+    const deltaHead = sets.length === 2 ? "<th class=\"num\">Δ (A − B)</th>" : "";
+    html = `<tr><th>Measure</th>${heads}${deltaHead}</tr>` +
         rows.map(([label, get, key]) => {
-          let delta = "—";
-          if (key) {
-            const a = sets[0].stats[key], b = sets[1].stats[key];
-            if (typeof a === "number" && typeof b === "number") delta = fmt(a - b, 4);
+          const cells = sets.map(s => `<td class="num">${get(s.stats, s)}</td>`).join("");
+          let delta = "";
+          if (sets.length === 2) {
+            let d = "—";
+            if (key) {
+              const a = sets[0].stats[key], b = sets[1].stats[key];
+              if (typeof a === "number" && typeof b === "number") d = fmt(a - b, 4);
+            }
+            delta = `<td class="num">${d}</td>`;
           }
-          return `<tr><td>${label}</td><td class="num">${get(sets[0].stats)}</td>` +
-                 `<td class="num">${get(sets[1].stats)}</td><td class="num">${delta}</td></tr>`;
+          return `<tr><td>${label}</td>${cells}${delta}</tr>`;
         }).join("");
   }
   $("statsTable").innerHTML = html;
 }
+
+/* ---------- chi-square ---------- */
+
+$("chiRun").addEventListener("click", async () => {
+  $("chiError").classList.remove("show");
+  $("chiResult").innerHTML = "";
+  const body = $("chiInput").value;
+  if (!body.trim()) {
+    $("chiError").textContent = "Enter counts first — one row for goodness-of-fit, a table for independence.";
+    $("chiError").classList.add("show");
+    return;
+  }
+  try {
+    const res = await fetch("/api/chisquare", { method: "POST",
+      headers: { "Content-Type": "text/plain; charset=utf-8" }, body });
+    const data = await res.json();
+    if (!res.ok) {
+      $("chiError").textContent = data.error || ("Request failed with status " + res.status);
+      $("chiError").classList.add("show");
+      return;
+    }
+    const expectedRows = data.expected.map(row =>
+        `<tr>${row.map(v => `<td class="num">${fmt(v, 2)}</td>`).join("")}</tr>`).join("");
+    $("chiResult").innerHTML =
+      `<div class="test-grid">` + testGridCells([
+        ["Test", data.mode === "independence" ? "Independence" : "Goodness of fit"],
+        ["χ² statistic", fmt(data.statistic, 3)],
+        ["df", String(data.df)],
+        ["p-value", fmtP(data.pValue)]
+      ]) + `</div>` +
+      `<div class="verdict">${significanceSentence(data.pValue,
+          data.mode === "independence" ? "the association between the variables" : "the departure from the expected counts")}</div>` +
+      `<div class="footnote" style="margin-top:10px">Expected counts under H₀:</div>` +
+      `<div class="scroll-x" style="margin-top:6px"><table>${expectedRows}</table></div>`;
+  } catch (e) {
+    $("chiError").textContent = "Could not reach the analysis server: " + e.message;
+    $("chiError").classList.add("show");
+  }
+});
+
+/* ---------- exports ---------- */
+
+$("copyJson").addEventListener("click", () => {
+  if (!lastResponse) return;
+  navigator.clipboard.writeText(JSON.stringify(lastResponse, null, 2)).then(() => {
+    $("copyJson").textContent = "Copied!";
+    setTimeout(() => { $("copyJson").textContent = "Copy JSON"; }, 1200);
+  });
+});
+
+$("copyZ").addEventListener("click", () => {
+  // Standardize the pasted values of Dataset A client-side: z = (x - mean) / s
+  const s = lastSets && lastSets[0] && lastSets[0].stats;
+  if (!s || !(s.sampleStdDev > 0)) return;
+  const values = $("inputA").value.split(/[\s,;]+/).filter(t => t).map(Number).filter(v => !Number.isNaN(v));
+  const z = values.map(v => ((v - s.mean) / s.sampleStdDev).toFixed(4)).join("\n");
+  navigator.clipboard.writeText(z).then(() => {
+    $("copyZ").textContent = "Copied!";
+    setTimeout(() => { $("copyZ").textContent = "Copy z-scores"; }, 1200);
+  });
+});
+
+$("downloadReport").addEventListener("click", () => {
+  if (!lastSets) return;
+  const style = document.querySelector("style").innerHTML;
+  const results = $("results").cloneNode(true);
+  results.querySelectorAll("button").forEach(b => b.remove());
+  results.querySelectorAll(".tooltip").forEach(t => t.remove());
+  const now = new Date().toISOString().slice(0, 16).replace("T", " ");
+  const html = `<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><title>Number Insights report</title>
+<style>${style}</style></head>
+<body><div class="wrap">
+<header><h1>Number Insights — analysis report</h1><p>Generated ${now}</p></header>
+${results.outerHTML.replace('id="results"', 'id="results" class="show" style="display:block"')}
+</div></body></html>`;
+  const blob = new Blob([html], { type: "text/html" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "number-insights-report.html";
+  a.click();
+  URL.revokeObjectURL(a.href);
+});
 </script>
 </body>
 </html>

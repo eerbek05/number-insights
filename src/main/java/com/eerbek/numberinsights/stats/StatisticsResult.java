@@ -10,9 +10,10 @@ import java.util.List;
  * {@code toString}.</p>
  *
  * <p>Measures that need a minimum sample size (sample variance needs n ≥ 2,
- * skewness n ≥ 3, kurtosis n ≥ 4) or a non-zero denominator (coefficient of
- * variation needs a non-zero mean) are {@link Double#NaN} when undefined;
- * formatters render NaN as {@code n/a} / {@code null}.</p>
+ * skewness n ≥ 3, kurtosis and the Jarque–Bera test n ≥ 4) or a non-zero
+ * denominator (coefficient of variation needs a non-zero mean) are
+ * {@link Double#NaN} when undefined; formatters render NaN as {@code n/a} /
+ * {@code null}.</p>
  *
  * @param count          number of observations
  * @param sum            sum of all observations
@@ -42,16 +43,20 @@ import java.util.List;
  * @param lowerFence     Tukey lower outlier fence, {@code q1 - 1.5 * iqr}
  * @param upperFence     Tukey upper outlier fence, {@code q3 + 1.5 * iqr}
  * @param outlierCount   number of observations outside the Tukey fences
+ * @param jarqueBera     Jarque–Bera normality statistic (from the population-moment
+ *                       skewness and kurtosis; NaN when n &lt; 4 or the data is constant)
+ * @param jarqueBeraP    asymptotic p-value of the Jarque–Bera test (χ² with 2 df);
+ *                       small values are evidence against normality
  */
 public record StatisticsResult(
         long count,
-        long sum,
-        int min,
-        int max,
-        int range,
+        double sum,
+        double min,
+        double max,
+        double range,
         double mean,
         double median,
-        List<Integer> modes,
+        List<Double> modes,
         double variance,
         double stdDev,
         double sampleVariance,
@@ -69,7 +74,9 @@ public record StatisticsResult(
         double ci95High,
         double lowerFence,
         double upperFence,
-        long outlierCount) {
+        long outlierCount,
+        double jarqueBera,
+        double jarqueBeraP) {
 
     public StatisticsResult {
         // Keep the modes list immutable inside the record.
