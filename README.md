@@ -51,7 +51,10 @@ frontend is a single self-contained page (vanilla JS + SVG).
   Q-Q points, stacked box plots and an A/B/C/D statistics table (delta column for
   two sets).
 - **Interactive web UI** — stat tiles, hover tooltips everywhere, adjustable bin
-  count, CSV **column picker** for multi-column files, one-click **JSON export**,
+  count, an **info button on every card** explaining what the plot means, and a
+  **fullscreen mode** per chart (click the chart or the expand icon) with
+  zoom/pan and per-dataset show/hide chips (close with Esc or the x button).
+  CSV **column picker** for multi-column files, one-click **JSON export**,
   **z-score export** and a **downloadable standalone HTML report**. Automatic
   light/dark theme.
 - **ASCII histogram & t-test in the terminal** — `--histogram`, `--test-mean`.

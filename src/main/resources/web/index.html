@@ -125,6 +125,44 @@
   details.card summary { font-size: 14px; font-weight: 600; color: var(--text-secondary); cursor: pointer; }
   details.card[open] summary { margin-bottom: 12px; }
   .chi-result { margin-top: 12px; }
+
+  /* Card header actions: info + expand */
+  .card { position: relative; }
+  .head-actions { position: absolute; top: 12px; right: 12px; display: flex; gap: 6px; z-index: 6; }
+  .icon-btn { width: 26px; height: 26px; padding: 0; border-radius: 50%; font-size: 13px;
+              line-height: 1; display: inline-flex; align-items: center; justify-content: center;
+              color: var(--text-muted); }
+  .icon-btn:hover { color: var(--text-primary); }
+  .info-pop { display: none; position: absolute; top: 42px; right: 12px; max-width: 360px;
+              background: var(--surface-1); border: 1px solid var(--border); border-radius: 10px;
+              box-shadow: 0 6px 22px rgba(0,0,0,0.22); padding: 12px 14px; font-size: 12.5px;
+              color: var(--text-secondary); z-index: 7; line-height: 1.5; }
+  .info-pop.show { display: block; }
+  .chart-box { cursor: zoom-in; }
+
+  /* Fullscreen chart modal */
+  .modal { display: none; position: fixed; inset: 0; z-index: 50; background: var(--page);
+           flex-direction: column; }
+  .modal.show { display: flex; }
+  .modal-head { display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+                padding: 12px 18px; border-bottom: 1px solid var(--border); background: var(--surface-1); }
+  .modal-head .m-title { font-size: 15px; font-weight: 650; margin-right: 4px; }
+  .m-series { display: flex; gap: 8px; flex-wrap: wrap; }
+  .chip { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; padding: 5px 11px;
+          border: 1px solid var(--border); border-radius: 999px; cursor: pointer;
+          background: var(--surface-1); color: var(--text-primary); user-select: none; }
+  .chip .dot { width: 9px; height: 9px; border-radius: 50%; }
+  .chip.off { opacity: 0.35; }
+  .chip:hover { border-color: var(--text-muted); }
+  .m-zoom { display: flex; align-items: center; gap: 6px; margin-left: auto; }
+  .m-zoom .pct { font-size: 12.5px; color: var(--text-secondary); min-width: 44px; text-align: center;
+                 font-variant-numeric: tabular-nums; }
+  .m-close { font-size: 20px; width: 34px; height: 34px; padding: 0; border-radius: 8px; }
+  .modal-body { flex: 1; overflow: auto; padding: 24px; cursor: grab; }
+  .modal-body.dragging { cursor: grabbing; }
+  .modal-canvas { margin: 0 auto; min-width: 300px; }
+  .modal-canvas .chart-box { cursor: default; }
+  .m-hint { font-size: 12px; color: var(--text-muted); }
 </style>
 </head>
 <body>
@@ -203,37 +241,37 @@
       <div class="chart-box" id="scatterBox"><div class="tooltip" id="scatterTip"></div></div>
     </section>
 
-    <section class="card">
+    <section class="card" id="histCard">
       <h2 id="histTitle">Distribution — histogram</h2>
       <div class="legend" id="histLegend"></div>
       <div class="chart-box" id="histBox"><div class="tooltip" id="histTip"></div></div>
       <div class="footnote" id="histNote" style="display:none">Normal curve: expected bin counts for a normal distribution with the dataset's mean and standard deviation.</div>
     </section>
 
-    <section class="card">
+    <section class="card" id="ecdfCard">
       <h2>Cumulative distribution — ECDF</h2>
       <div class="legend" id="ecdfLegend"></div>
       <div class="chart-box" id="ecdfBox"><div class="tooltip" id="ecdfTip"></div></div>
     </section>
 
-    <section class="card">
+    <section class="card" id="qqCard">
       <h2>Normality — Q-Q plot</h2>
       <div class="legend" id="qqLegend"></div>
       <div class="chart-box" id="qqBox"><div class="tooltip" id="qqTip"></div></div>
       <div class="footnote">Standardized sample quantiles against normal quantiles. Points on the diagonal = normal; the Jarque–Bera p-value in the table quantifies it.</div>
     </section>
 
-    <section class="card">
+    <section class="card" id="boxCard">
       <h2>Five-number summary — box plot</h2>
       <div class="chart-box" id="boxBox"><div class="tooltip" id="boxTip"></div></div>
     </section>
 
-    <section class="card">
+    <section class="card" id="freqCard">
       <h2>Frequency table</h2>
       <div class="scroll-x"><table id="freqTable"></table></div>
     </section>
 
-    <section class="card">
+    <section class="card" id="statsCard">
       <div class="row-actions">
         <h2>All statistics</h2>
         <div class="buttons">
@@ -245,6 +283,27 @@
       <div class="scroll-x"><table id="statsTable"></table></div>
       <div class="footnote">Kurtosis is <em>excess</em> kurtosis (0 = normal). CI uses the normal approximation. Outliers use the Tukey 1.5·IQR fence rule. JB = Jarque–Bera normality test (small p ⇒ not normal).</div>
     </section>
+  </div>
+</div>
+
+<!-- Fullscreen chart modal -->
+<div class="modal" id="modal" role="dialog" aria-modal="true">
+  <div class="modal-head">
+    <span class="m-title" id="modalTitle"></span>
+    <div class="m-series" id="modalSeries"></div>
+    <span class="m-hint">drag to pan · ⌘/Ctrl + scroll to zoom · Esc to close</span>
+    <div class="m-zoom">
+      <button class="icon-btn" id="zoomOut" title="Zoom out">−</button>
+      <span class="pct" id="zoomPct">100%</span>
+      <button class="icon-btn" id="zoomIn" title="Zoom in">+</button>
+      <button id="zoomReset">Reset</button>
+      <button class="m-close" id="modalClose" title="Close (Esc)">×</button>
+    </div>
+  </div>
+  <div class="modal-body" id="modalScroll">
+    <div class="modal-canvas" id="modalCanvas">
+      <div class="chart-box" id="modalBox"><div class="tooltip" id="modalTip"></div></div>
+    </div>
   </div>
 </div>
 
@@ -649,14 +708,15 @@ function chartFrame(svg, pad, plotW, plotH, ticks, y, fmtTick) {
   }
 }
 
-function renderHistogram(sets) {
+function renderHistogram(sets, ui) {
+  ui = ui || { box: $("histBox"), tip: $("histTip"), chrome: true };
   const W = CHART_W, H = 300;
   const pad = { top: 16, right: 12, bottom: 34, left: 46 };
   const plotW = W - pad.left - pad.right, plotH = H - pad.top - pad.bottom;
   const showCurve = $("normalToggle").checked;
   const surface = css("--surface-1");
 
-  const box = $("histBox");
+  const box = ui.box;
   box.querySelector("svg")?.remove();
   const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": "Histogram" });
 
@@ -680,7 +740,7 @@ function renderHistogram(sets) {
   const slot = plotW / nBins, groupGap = 2;
   const barW = Math.min(24, (slot - groupGap * (sets.length + 1)) / sets.length);
   const groupW = barW * sets.length + groupGap * (sets.length - 1);
-  const tip = $("histTip");
+  const tip = ui.tip;
   const barPaths = [];
 
   for (let i = 0; i < nBins; i++) {
@@ -737,6 +797,7 @@ function renderHistogram(sets) {
     stroke: css("--baseline"), "stroke-width": 1 }));
 
   box.append(svg);
+  if (!ui.chrome) return;
   $("histTitle").textContent = `Distribution — histogram (${nBins} bins)`;
   $("histNote").style.display = showCurve ? "" : "none";
 
@@ -751,17 +812,18 @@ function renderHistogram(sets) {
   $("histLegend").innerHTML = items.join("");
 }
 
-function renderScatter(paired, sets) {
-  const card = $("scatterCard");
-  if (!paired || !paired.pairs || !paired.pairs.length || sets.length !== 2) {
-    card.style.display = "none"; return;
+function renderScatter(paired, sets, ui) {
+  ui = ui || { box: $("scatterBox"), tip: $("scatterTip"), chrome: true };
+  const usable = paired && paired.pairs && paired.pairs.length && sets.length === 2;
+  if (ui.chrome) {
+    $("scatterCard").style.display = usable ? "" : "none";
   }
-  card.style.display = "";
+  if (!usable) return;
   const W = CHART_W, H = 360;
   const pad = { top: 16, right: 16, bottom: 40, left: 52 };
   const plotW = W - pad.left - pad.right, plotH = H - pad.top - pad.bottom;
 
-  const box = $("scatterBox");
+  const box = ui.box;
   box.querySelector("svg")?.remove();
   const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": "Scatter plot with regression line" });
 
@@ -796,7 +858,7 @@ function renderScatter(paired, sets) {
   }
 
   // Points: ≥8px markers with a surface ring
-  const tip = $("scatterTip");
+  const tip = ui.tip;
   const surface = css("--surface-1");
   paired.pairs.forEach(p => {
     svg.append(el("circle", { cx: x(p[0]), cy: y(p[1]), r: 5, fill: sets[0].color,
@@ -828,6 +890,7 @@ function renderScatter(paired, sets) {
   svg.append(hit);
 
   box.append(svg);
+  if (!ui.chrome) return;
   const legend = [`<span class="item"><span class="dot-key" style="background:${sets[0].color}"></span>Pairs (n = ${paired.pairs.length}${paired.pairsTruncated ? ", first 2000 shown" : ""})</span>`];
   if (paired.bivariate) {
     legend.push(`<span class="item"><span class="line-key" style="border-color:${css("--curve-1")}"></span>ŷ = ${fmt(paired.bivariate.slope, 3)}·x + ${fmt(paired.bivariate.intercept, 3)}</span>`);
@@ -835,12 +898,13 @@ function renderScatter(paired, sets) {
   $("scatterLegend").innerHTML = legend.join("");
 }
 
-function renderEcdf(sets) {
+function renderEcdf(sets, ui) {
+  ui = ui || { box: $("ecdfBox"), tip: $("ecdfTip"), chrome: true };
   const W = CHART_W, H = 280;
   const pad = { top: 16, right: 16, bottom: 34, left: 46 };
   const plotW = W - pad.left - pad.right, plotH = H - pad.top - pad.bottom;
 
-  const box = $("ecdfBox");
+  const box = ui.box;
   box.querySelector("svg")?.remove();
   const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": "Empirical cumulative distribution" });
 
@@ -865,7 +929,7 @@ function renderEcdf(sets) {
   }
 
   // Crosshair tooltip: cumulative % of each dataset at the hovered value
-  const tip = $("ecdfTip");
+  const tip = ui.tip;
   const hit = el("rect", { x: pad.left, y: pad.top, width: plotW, height: plotH, fill: "transparent" });
   hit.addEventListener("mousemove", e => {
     const rect = box.getBoundingClientRect();
@@ -887,17 +951,19 @@ function renderEcdf(sets) {
   svg.append(hit);
 
   box.append(svg);
+  if (!ui.chrome) return;
   $("ecdfLegend").innerHTML = sets.length > 1
       ? sets.map(set => `<span class="item"><span class="line-key" style="border-color:${set.color}"></span>${set.name}</span>`).join("")
       : "";
 }
 
-function renderQQ(sets) {
+function renderQQ(sets, ui) {
+  ui = ui || { box: $("qqBox"), chrome: true };
   const W = CHART_W, H = 320;
   const pad = { top: 16, right: 16, bottom: 40, left: 52 };
   const plotW = W - pad.left - pad.right, plotH = H - pad.top - pad.bottom;
 
-  const box = $("qqBox");
+  const box = ui.box;
   box.querySelector("svg")?.remove();
   const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": "Normal Q-Q plot" });
 
@@ -931,6 +997,7 @@ function renderQQ(sets) {
     }
   }
   box.append(svg);
+  if (!ui.chrome) return;
 
   const items = sets.length > 1
       ? sets.map(set => `<span class="item"><span class="dot-key" style="background:${set.color}"></span>${set.name}</span>`)
@@ -939,13 +1006,14 @@ function renderQQ(sets) {
   $("qqLegend").innerHTML = items.join("");
 }
 
-function renderBoxPlots(sets) {
+function renderBoxPlots(sets, ui) {
+  ui = ui || { box: $("boxBox"), tip: $("boxTip"), chrome: true };
   const rowH = 96;
   const W = CHART_W, H = 40 + rowH * sets.length;
   const pad = { left: 60, right: 46 };
   const plotW = W - pad.left - pad.right;
 
-  const box = $("boxBox");
+  const box = ui.box;
   box.querySelector("svg")?.remove();
   const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": "Box plots" });
 
@@ -954,7 +1022,7 @@ function renderBoxPlots(sets) {
   const span = hi - lo || 1;
   const x = v => pad.left + ((v - lo) / span) * plotW;
   const muted = css("--text-muted");
-  const tip = $("boxTip");
+  const tip = ui.tip;
 
   sets.forEach((set, k) => {
     const s = set.stats;
@@ -1143,6 +1211,7 @@ $("downloadReport").addEventListener("click", () => {
   const results = $("results").cloneNode(true);
   results.querySelectorAll("button").forEach(b => b.remove());
   results.querySelectorAll(".tooltip").forEach(t => t.remove());
+  results.querySelectorAll(".info-pop, .head-actions").forEach(t => t.remove());
   const now = new Date().toISOString().slice(0, 16).replace("T", " ");
   const html = `<!DOCTYPE html>
 <html lang="en"><head><meta charset="utf-8"><title>Number Insights report</title>
@@ -1158,6 +1227,189 @@ ${results.outerHTML.replace('id="results"', 'id="results" class="show" style="di
   a.click();
   URL.revokeObjectURL(a.href);
 });
+
+/* ---------- card info buttons + fullscreen modal ---------- */
+
+const CHART_DEFS = {
+  hist:    { title: "Distribution — histogram", filterable: true,
+             render: (sets, ui) => renderHistogram(sets, ui) },
+  ecdf:    { title: "Cumulative distribution — ECDF", filterable: true,
+             render: (sets, ui) => renderEcdf(sets, ui) },
+  qq:      { title: "Normality — Q-Q plot", filterable: true,
+             render: (sets, ui) => renderQQ(sets, ui) },
+  boxp:    { title: "Five-number summary — box plot", filterable: true,
+             render: (sets, ui) => renderBoxPlots(sets, ui) },
+  scatter: { title: "Scatter plot — A vs B", filterable: false,
+             render: (sets, ui) => renderScatter(lastResponse && lastResponse.paired, lastSets, ui) }
+};
+
+const CARD_CHROME = [
+  ["oneSampleCard", null, null,
+   "Tests whether the population mean differs from a hypothesised value µ₀. A small p-value (< 0.05) means the observed mean is unlikely if the true mean were µ₀."],
+  ["compareCard", null, null,
+   "Welch's t-test asks whether two independent groups have different means, without assuming equal variances. Cohen's d expresses how large the difference is in standard-deviation units."],
+  ["pairedCard", null, null,
+   "For before/after measurements on the same subjects: the paired t-test works on the per-subject differences, and Pearson/Spearman measure how strongly A and B move together."],
+  ["anovaCard", null, null,
+   "One-way ANOVA asks whether three or more group means are all equal. A small p-value says at least one group differs — it does not say which one."],
+  ["scatterCard", "scatter", "scatterBox",
+   "Each point is one (A, B) pair. The line is the least-squares fit ŷ = slope·x + intercept; the tighter the points hug the line, the stronger the linear relationship (higher R²)."],
+  ["histCard", "hist", "histBox",
+   "Shows how the values are distributed: each bar counts how many observations fall in that interval. Shape tells you about skew, spread and modality; the normal curve shows what a normal distribution with the same mean and standard deviation would look like."],
+  ["ecdfCard", "ecdf", "ecdfBox",
+   "For every value x, the curve shows the share of observations ≤ x. Great for comparing datasets: a curve shifted right means larger values overall; steepness shows where the data is concentrated."],
+  ["qqCard", "qq", "qqBox",
+   "Compares your data's quantiles with a normal distribution's. Points on the diagonal mean the data is approximately normal; S-shapes mean light/heavy tails, bends mean skew."],
+  ["boxCard", "boxp", "boxBox",
+   "Summarises each dataset with five numbers: Min, Q1, Median, Q3, Max. The box spans the middle 50% of the data (IQR); comparing boxes on the shared scale shows shifts in centre and spread."],
+  ["freqCard", null, null,
+   "The classic frequency table: how many observations (f) fall in each interval, as a count and a percentage, plus running (cumulative) totals."],
+  ["statsCard", null, null,
+   "Every computed measure in one place. \"Population\" variants divide by n, \"sample\" variants by n−1. The Jarque–Bera row is a normality test: a small p-value is evidence the data is not normal."]
+];
+
+function setupCardChrome() {
+  for (const [cardId, chartType, boxId, infoText] of CARD_CHROME) {
+    const card = $(cardId);
+    if (!card) continue;
+
+    const actions = document.createElement("div");
+    actions.className = "head-actions";
+
+    const pop = document.createElement("div");
+    pop.className = "info-pop";
+    pop.textContent = infoText;
+
+    const info = document.createElement("button");
+    info.className = "icon-btn";
+    info.title = "What is this?";
+    info.textContent = "i";
+    info.style.fontStyle = "italic";
+    info.style.fontFamily = "Georgia, serif";
+    info.addEventListener("click", e => {
+      e.stopPropagation();
+      const wasOpen = pop.classList.contains("show");
+      document.querySelectorAll(".info-pop.show").forEach(x => x.classList.remove("show"));
+      if (!wasOpen) pop.classList.add("show");
+    });
+    actions.appendChild(info);
+
+    if (chartType) {
+      const expand = document.createElement("button");
+      expand.className = "icon-btn";
+      expand.title = "Fullscreen";
+      expand.textContent = "⤢";
+      expand.addEventListener("click", e => { e.stopPropagation(); openModal(chartType); });
+      actions.appendChild(expand);
+      if (boxId) $(boxId).addEventListener("click", () => openModal(chartType));
+    }
+
+    card.appendChild(actions);
+    card.appendChild(pop);
+  }
+  document.addEventListener("click", e => {
+    if (!e.target.closest(".info-pop") && !e.target.closest(".icon-btn")) {
+      document.querySelectorAll(".info-pop.show").forEach(x => x.classList.remove("show"));
+    }
+  });
+}
+setupCardChrome();
+
+const modalState = { type: null, hidden: new Set(), zoom: 1 };
+
+function openModal(type) {
+  if (!lastSets) return;
+  modalState.type = type;
+  modalState.hidden = new Set();
+  setModalZoom(1);
+  $("modalTitle").textContent = CHART_DEFS[type].title;
+  buildModalChips();
+  renderModalChart();
+  $("modal").classList.add("show");
+  document.body.style.overflow = "hidden";
+}
+
+function closeModal() {
+  $("modal").classList.remove("show");
+  document.body.style.overflow = "";
+  modalState.type = null;
+}
+
+function buildModalChips() {
+  const host = $("modalSeries");
+  host.innerHTML = "";
+  const def = CHART_DEFS[modalState.type];
+  if (!def.filterable || lastSets.length < 2) return;
+  lastSets.forEach((set, i) => {
+    const chip = document.createElement("button");
+    chip.className = "chip";
+    chip.innerHTML = `<span class="dot" style="background:${set.color}"></span>${set.name}`;
+    chip.addEventListener("click", () => {
+      if (modalState.hidden.has(i)) {
+        modalState.hidden.delete(i);
+      } else {
+        if (lastSets.length - modalState.hidden.size <= 1) return; // keep at least one visible
+        modalState.hidden.add(i);
+      }
+      chip.classList.toggle("off", modalState.hidden.has(i));
+      renderModalChart();
+    });
+    host.appendChild(chip);
+  });
+}
+
+function renderModalChart() {
+  const def = CHART_DEFS[modalState.type];
+  const sets = def.filterable
+      ? lastSets.filter((_, i) => !modalState.hidden.has(i))
+      : lastSets;
+  def.render(sets, { box: $("modalBox"), tip: $("modalTip"), chrome: false });
+}
+
+function setModalZoom(z) {
+  modalState.zoom = Math.min(4, Math.max(1, Math.round(z * 4) / 4));
+  $("modalCanvas").style.width = (modalState.zoom * 100) + "%";
+  $("zoomPct").textContent = Math.round(modalState.zoom * 100) + "%";
+}
+
+$("zoomIn").addEventListener("click", () => setModalZoom(modalState.zoom + 0.25));
+$("zoomOut").addEventListener("click", () => setModalZoom(modalState.zoom - 0.25));
+$("zoomReset").addEventListener("click", () => setModalZoom(1));
+$("modalClose").addEventListener("click", closeModal);
+
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape" && modalState.type) closeModal();
+});
+
+// Pinch / ⌘·Ctrl + scroll zooms; plain scroll pans as usual
+$("modalScroll").addEventListener("wheel", e => {
+  if (!(e.ctrlKey || e.metaKey)) return;
+  e.preventDefault();
+  setModalZoom(modalState.zoom + (e.deltaY < 0 ? 0.25 : -0.25));
+}, { passive: false });
+
+// Drag to pan
+(() => {
+  const scroller = $("modalScroll");
+  let dragging = false, startX = 0, startY = 0, startLeft = 0, startTop = 0;
+  scroller.addEventListener("mousedown", e => {
+    if (e.button !== 0 || e.target.closest("button")) return;
+    dragging = true;
+    startX = e.clientX; startY = e.clientY;
+    startLeft = scroller.scrollLeft; startTop = scroller.scrollTop;
+    scroller.classList.add("dragging");
+    e.preventDefault();
+  });
+  window.addEventListener("mousemove", e => {
+    if (!dragging) return;
+    scroller.scrollLeft = startLeft - (e.clientX - startX);
+    scroller.scrollTop = startTop - (e.clientY - startY);
+  });
+  window.addEventListener("mouseup", () => {
+    dragging = false;
+    scroller.classList.remove("dragging");
+  });
+})();
 </script>
 </body>
 </html>
