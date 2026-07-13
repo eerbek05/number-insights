@@ -117,7 +117,7 @@
   .scroll-x { overflow-x: auto; }
 
   .row-actions { display: flex; justify-content: space-between; align-items: center;
-                 margin-bottom: 12px; flex-wrap: wrap; gap: 8px; }
+                 margin-bottom: 12px; flex-wrap: wrap; gap: 8px; padding-right: 34px; }
   .row-actions h2 { margin-bottom: 0; }
   .row-actions .buttons { display: flex; gap: 8px; flex-wrap: wrap; }
   .footnote { font-size: 12px; color: var(--text-muted); margin-top: 10px; }
@@ -163,6 +163,21 @@
   .modal-canvas { margin: 0 auto; min-width: 300px; }
   .modal-canvas .chart-box { cursor: default; }
   .m-hint { font-size: 12px; color: var(--text-muted); }
+
+  .th-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%;
+            margin-right: 6px; vertical-align: 1px; }
+
+  /* Fullscreen crosshair */
+  .modal-canvas .chart-box { cursor: crosshair; }
+  .ch-line { display: none; position: absolute; pointer-events: none;
+             background: var(--text-muted); opacity: 0.55; z-index: 4; }
+  .ch-line.v { width: 1px; }
+  .ch-line.h { height: 1px; }
+  .ch-badge { display: none; position: absolute; pointer-events: none;
+              background: var(--surface-1); border: 1px solid var(--border);
+              border-radius: 6px; padding: 2px 8px; font-size: 11.5px;
+              font-variant-numeric: tabular-nums; color: var(--text-primary);
+              box-shadow: 0 2px 8px rgba(0,0,0,0.22); white-space: nowrap; z-index: 5; }
 </style>
 </head>
 <body>
@@ -346,9 +361,9 @@ function fmtP(p) {
   return fmt(p, 4);
 }
 
-function niceTicks(max) {
+function niceTicks(max, target = 4) {
   if (max <= 0) return [0, 1];
-  const rough = max / 4;
+  const rough = max / target;
   const pow = Math.pow(10, Math.floor(Math.log10(rough)));
   const step = [1, 2, 5, 10].map(m => m * pow).find(s => s >= rough);
   const ticks = [];
@@ -732,7 +747,8 @@ function renderHistogram(sets, ui) {
       }
     }
   }
-  const ticks = niceTicks(yPeak);
+  const detail = ui.detail || 1;
+  const ticks = niceTicks(yPeak, Math.round(4 * detail));
   const yMax = ticks[ticks.length - 1];
   const y = v => pad.top + plotH - (v / yMax) * plotH;
   chartFrame(svg, pad, plotW, plotH, ticks, y, fmt);
@@ -786,15 +802,23 @@ function renderHistogram(sets, ui) {
     svg.append(hit);
   }
 
-  const every = Math.ceil(nBins / 6);
+  const every = Math.max(1, Math.ceil(nBins / (6 * detail)));
+  const xDigits = detail >= 2 ? 1 : 0;
   for (let i = 0; i < nBins; i += every) {
     svg.append(el("text", { x: pad.left + i * slot, y: H - 12, "text-anchor": "middle", "font-size": 11,
-      fill: css("--text-muted") }, fmt(bins[i].low, 0)));
+      fill: css("--text-muted") }, fmt(bins[i].low, xDigits)));
   }
   svg.append(el("text", { x: pad.left + plotW, y: H - 12, "text-anchor": "end", "font-size": 11,
-    fill: css("--text-muted") }, fmt(bins[nBins - 1].high, 0)));
+    fill: css("--text-muted") }, fmt(bins[nBins - 1].high, xDigits)));
   svg.append(el("line", { x1: pad.left, x2: W - pad.right, y1: y(0), y2: y(0),
     stroke: css("--baseline"), "stroke-width": 1 }));
+
+  // Inverse scales for the fullscreen crosshair readout
+  const domainLo = bins[0].low, domainHi = bins[nBins - 1].high;
+  box._axes = { W, H, left: pad.left, top: pad.top, w: plotW, h: plotH,
+    xVal: vx => domainLo + (vx - pad.left) / plotW * (domainHi - domainLo),
+    yVal: vy => Math.max(0, (pad.top + plotH - vy) / plotH * yMax),
+    fx: v => fmt(v, 2), fy: v => fmt(v, 1) };
 
   box.append(svg);
   if (!ui.chrome) return;
@@ -834,17 +858,23 @@ function renderScatter(paired, sets, ui) {
   const x = v => pad.left + ((v - xLo + xPadding) / ((xHi - xLo) + 2 * xPadding || 1)) * plotW;
   const y = v => pad.top + plotH - ((v - yLo + yPadding) / ((yHi - yLo) + 2 * yPadding || 1)) * plotH;
 
-  // Recessive frame: 4 horizontal gridlines with y tick labels
-  const yTicks = 4;
+  // Recessive frame with detail-scaled ticks
+  const detail = ui.detail || 1;
+  const yTicks = Math.round(4 * detail);
   for (let i = 0; i <= yTicks; i++) {
     const v = yLo + (i / yTicks) * (yHi - yLo || 1);
     svg.append(el("line", { x1: pad.left, x2: pad.left + plotW, y1: y(v), y2: y(v), stroke: css("--gridline"), "stroke-width": 1 }));
     svg.append(el("text", { x: pad.left - 8, y: y(v) + 4, "text-anchor": "end", "font-size": 11, fill: css("--text-muted") }, fmt(v, 1)));
   }
-  for (let i = 0; i <= 5; i++) {
-    const v = xLo + (i / 5) * (xHi - xLo || 1);
+  const xTicks = Math.round(5 * detail);
+  for (let i = 0; i <= xTicks; i++) {
+    const v = xLo + (i / xTicks) * (xHi - xLo || 1);
     svg.append(el("text", { x: x(v), y: H - 14, "text-anchor": "middle", "font-size": 11, fill: css("--text-muted") }, fmt(v, 1)));
   }
+  box._axes = { W, H, left: pad.left, top: pad.top, w: plotW, h: plotH,
+    xVal: vx => (xLo - xPadding) + (vx - pad.left) / plotW * ((xHi - xLo) + 2 * xPadding),
+    yVal: vy => (yLo - yPadding) + (pad.top + plotH - vy) / plotH * ((yHi - yLo) + 2 * yPadding),
+    fx: v => "A " + fmt(v, 2), fy: v => "B " + fmt(v, 2) };
   svg.append(el("text", { x: pad.left + plotW / 2, y: H - 1, "text-anchor": "middle", "font-size": 11, fill: css("--text-secondary") }, "Dataset A"));
   svg.append(el("text", { x: 12, y: pad.top + plotH / 2, "font-size": 11, fill: css("--text-secondary"),
     transform: `rotate(-90 12 ${pad.top + plotH / 2})`, "text-anchor": "middle" }, "Dataset B"));
@@ -913,14 +943,21 @@ function renderEcdf(sets, ui) {
   const x = v => pad.left + ((v - lo) / (hi - lo || 1)) * plotW;
   const y = p => pad.top + plotH - p * plotH; // p in [0,1]
 
-  for (const p of [0, 0.25, 0.5, 0.75, 1]) {
+  const detail = ui.detail || 1;
+  const yStep = detail >= 3 ? 0.05 : detail >= 1.5 ? 0.1 : 0.25;
+  for (let p = 0; p <= 1.0001; p += yStep) {
     svg.append(el("line", { x1: pad.left, x2: pad.left + plotW, y1: y(p), y2: y(p), stroke: css("--gridline"), "stroke-width": 1 }));
-    svg.append(el("text", { x: pad.left - 8, y: y(p) + 4, "text-anchor": "end", "font-size": 11, fill: css("--text-muted") }, (p * 100) + "%"));
+    svg.append(el("text", { x: pad.left - 8, y: y(p) + 4, "text-anchor": "end", "font-size": 11, fill: css("--text-muted") }, Math.round(p * 100) + "%"));
   }
-  for (let i = 0; i <= 5; i++) {
-    const v = lo + (i / 5) * (hi - lo || 1);
-    svg.append(el("text", { x: x(v), y: H - 12, "text-anchor": "middle", "font-size": 11, fill: css("--text-muted") }, fmt(v, 1)));
+  const xLabels = Math.round(5 * detail);
+  for (let i = 0; i <= xLabels; i++) {
+    const v = lo + (i / xLabels) * (hi - lo || 1);
+    svg.append(el("text", { x: x(v), y: H - 12, "text-anchor": "middle", "font-size": 11, fill: css("--text-muted") }, fmt(v, detail >= 2 ? 2 : 1)));
   }
+  box._axes = { W, H, left: pad.left, top: pad.top, w: plotW, h: plotH,
+    xVal: vx => lo + (vx - pad.left) / plotW * (hi - lo || 1),
+    yVal: vy => Math.min(100, Math.max(0, (pad.top + plotH - vy) / plotH * 100)),
+    fx: v => fmt(v, 2), fy: v => fmt(v, 1) + "%" };
 
   for (const set of sets) {
     const pts = set.percentiles.map((v, i) => `${x(v).toFixed(1)},${y(i / 100).toFixed(1)}`);
@@ -971,11 +1008,19 @@ function renderQQ(sets, ui) {
   const x = z => pad.left + ((z + zMax) / (2 * zMax)) * plotW;
   const y = z => pad.top + plotH - ((z + zMax) / (2 * zMax)) * plotH;
 
-  for (const z of [-2, -1, 0, 1, 2]) {
+  const detail = ui.detail || 1;
+  const zStep = detail >= 2 ? 0.5 : 1;
+  for (let z = -2.5; z <= 2.5001; z += zStep) {
+    if (Math.abs(z) > 2.5) continue;
+    const label = (Math.round(z * 10) / 10).toString();
     svg.append(el("line", { x1: pad.left, x2: pad.left + plotW, y1: y(z), y2: y(z), stroke: css("--gridline"), "stroke-width": 1 }));
-    svg.append(el("text", { x: pad.left - 8, y: y(z) + 4, "text-anchor": "end", "font-size": 11, fill: css("--text-muted") }, String(z)));
-    svg.append(el("text", { x: x(z), y: H - 14, "text-anchor": "middle", "font-size": 11, fill: css("--text-muted") }, String(z)));
+    svg.append(el("text", { x: pad.left - 8, y: y(z) + 4, "text-anchor": "end", "font-size": 11, fill: css("--text-muted") }, label));
+    svg.append(el("text", { x: x(z), y: H - 14, "text-anchor": "middle", "font-size": 11, fill: css("--text-muted") }, label));
   }
+  box._axes = { W, H, left: pad.left, top: pad.top, w: plotW, h: plotH,
+    xVal: vx => -zMax + (vx - pad.left) / plotW * 2 * zMax,
+    yVal: vy => zMax - (vy - pad.top) / plotH * 2 * zMax,
+    fx: v => "z " + fmt(v, 2), fy: v => "z " + fmt(v, 2) };
   svg.append(el("text", { x: pad.left + plotW / 2, y: H - 1, "text-anchor": "middle", "font-size": 11, fill: css("--text-secondary") }, "Theoretical normal quantile (z)"));
   svg.append(el("text", { x: 12, y: pad.top + plotH / 2, "font-size": 11, fill: css("--text-secondary"),
     transform: `rotate(-90 12 ${pad.top + plotH / 2})`, "text-anchor": "middle" }, "Standardized sample quantile"));
@@ -985,10 +1030,11 @@ function renderQQ(sets, ui) {
     stroke: css("--baseline"), "stroke-width": 1.5 }));
 
   const surface = css("--surface-1");
+  const qStep = detail >= 1.5 ? 1 : 2;
   for (const set of sets) {
     const mean = set.stats.mean, sd = set.stats.sampleStdDev;
     if (!(sd > 0)) continue;
-    for (let i = 1; i <= 99; i += 2) {
+    for (let i = 1; i <= 99; i += qStep) {
       const zTheo = invNorm(i / 100);
       const zSample = (set.percentiles[i] - mean) / sd;
       if (Math.abs(zSample) > zMax) continue;
@@ -1023,6 +1069,10 @@ function renderBoxPlots(sets, ui) {
   const x = v => pad.left + ((v - lo) / span) * plotW;
   const muted = css("--text-muted");
   const tip = ui.tip;
+
+  box._axes = { W, H, left: pad.left, top: 10, w: plotW, h: H - 20,
+    xVal: vx => lo + (vx - pad.left) / plotW * span,
+    yVal: null, fx: v => fmt(v, 2), fy: null };
 
   sets.forEach((set, k) => {
     const s = set.stats;
@@ -1073,7 +1123,8 @@ function renderFrequencyTable(sets) {
         }).join("");
   } else {
     html = "<tr><th>Interval</th>" + sets.map(s =>
-        `<th class="num">f (${s.shortName})</th><th class="num">% (${s.shortName})</th>`).join("") + "</tr>" +
+        `<th class="num"><span class="th-dot" style="background:${s.color}"></span>f (${s.shortName})</th>` +
+        `<th class="num"><span class="th-dot" style="background:${s.color}"></span>% (${s.shortName})</th>`).join("") + "</tr>" +
         bins.map((b, i) =>
           `<tr><td>${fmt(b.low, 1)} – ${fmt(b.high, 1)}</td>` + sets.map(s => {
             const c = s.hist[i].count;
@@ -1124,7 +1175,8 @@ function renderTable(sets) {
     html = "<tr><th>Measure</th><th class=\"num\">Value</th></tr>" +
         rows.map(([label, get]) => `<tr><td>${label}</td><td class="num">${get(sets[0].stats, sets[0])}</td></tr>`).join("");
   } else {
-    const heads = sets.map(s => `<th class="num">${s.shortName}</th>`).join("");
+    const heads = sets.map(s =>
+        `<th class="num"><span class="th-dot" style="background:${s.color}"></span>${s.shortName}</th>`).join("");
     const deltaHead = sets.length === 2 ? "<th class=\"num\">Δ (A − B)</th>" : "";
     html = `<tr><th>Measure</th>${heads}${deltaHead}</tr>` +
         rows.map(([label, get, key]) => {
@@ -1363,14 +1415,76 @@ function renderModalChart() {
   const sets = def.filterable
       ? lastSets.filter((_, i) => !modalState.hidden.has(i))
       : lastSets;
-  def.render(sets, { box: $("modalBox"), tip: $("modalTip"), chrome: false });
+  // Detail scales with zoom: closer in = denser ticks and axis labels
+  def.render(sets, { box: $("modalBox"), tip: $("modalTip"), chrome: false, detail: modalState.zoom });
 }
 
 function setModalZoom(z) {
   modalState.zoom = Math.min(4, Math.max(1, Math.round(z * 4) / 4));
   $("modalCanvas").style.width = (modalState.zoom * 100) + "%";
   $("zoomPct").textContent = Math.round(modalState.zoom * 100) + "%";
+  if (modalState.type) renderModalChart();
 }
+
+/* Crosshair with live axis readouts, fullscreen only */
+(() => {
+  const box = $("modalBox");
+  const vLine = document.createElement("div"); vLine.className = "ch-line v";
+  const hLine = document.createElement("div"); hLine.className = "ch-line h";
+  const bx = document.createElement("div"); bx.className = "ch-badge";
+  const by = document.createElement("div"); by.className = "ch-badge";
+  bx.style.position = "fixed";
+  by.style.position = "fixed";
+  box.append(vLine, hLine);
+  $("modal").append(bx, by);
+
+  const hide = () => { for (const n of [vLine, hLine, bx, by]) n.style.display = "none"; };
+
+  box.addEventListener("mousemove", e => {
+    const axes = box._axes;
+    if (!axes) return hide();
+    const rect = box.getBoundingClientRect();
+    const scale = axes.W / rect.width; // viewBox units per CSS px (uniform)
+    const px = e.clientX - rect.left, py = e.clientY - rect.top;
+    const vx = px * scale, vy = py * scale;
+    if (vx < axes.left || vx > axes.left + axes.w || vy < axes.top || vy > axes.top + axes.h) {
+      return hide();
+    }
+    const plotTopPx = axes.top / scale, plotHPx = axes.h / scale;
+    const plotLeftPx = axes.left / scale, plotWPx = axes.w / scale;
+
+    vLine.style.display = "block";
+    vLine.style.left = px + "px";
+    vLine.style.top = plotTopPx + "px";
+    vLine.style.height = plotHPx + "px";
+
+    // Badges pinned to the screen edges so they stay visible at any zoom/pan
+    const view = $("modalScroll").getBoundingClientRect();
+    bx.style.display = "block";
+    bx.textContent = axes.fx(axes.xVal(vx));
+    bx.style.left = e.clientX + "px";
+    bx.style.transform = "translateX(-50%)";
+    bx.style.top = (view.bottom - 34) + "px";
+
+    if (axes.yVal) {
+      hLine.style.display = "block";
+      hLine.style.top = py + "px";
+      hLine.style.left = plotLeftPx + "px";
+      hLine.style.width = plotWPx + "px";
+
+      by.style.display = "block";
+      by.textContent = axes.fy(axes.yVal(vy));
+      by.style.left = "";
+      by.style.right = "14px";
+      by.style.top = e.clientY + "px";
+      by.style.transform = "translateY(-50%)";
+    } else {
+      hLine.style.display = "none";
+      by.style.display = "none";
+    }
+  });
+  box.addEventListener("mouseleave", hide);
+})();
 
 $("zoomIn").addEventListener("click", () => setModalZoom(modalState.zoom + 0.25));
 $("zoomOut").addEventListener("click", () => setModalZoom(modalState.zoom - 0.25));
