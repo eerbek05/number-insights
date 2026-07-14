@@ -1,6 +1,6 @@
 # Number Insights
 
-[![CI](https://github.com/eerbek05/lab13/actions/workflows/ci.yml/badge.svg)](https://github.com/eerbek05/lab13/actions/workflows/ci.yml)
+[![CI](https://github.com/eerbek05/number-insights/actions/workflows/ci.yml/badge.svg)](https://github.com/eerbek05/number-insights/actions/workflows/ci.yml)
 [![Java](https://img.shields.io/badge/Java-21-orange.svg)](https://openjdk.org/projects/jdk/21/)
 [![Build](https://img.shields.io/badge/build-Maven-blue.svg)](https://maven.apache.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
